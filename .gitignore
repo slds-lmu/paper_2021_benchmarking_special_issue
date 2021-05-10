@@ -6,3 +6,5 @@ tmp*
 *onnx
 
 experiments/problems/
+
+.Rhistory
