@@ -4,6 +4,10 @@ source("experiments/helper.R")
 
 source("experiments/algorithms/randomsearch.R")
 source("experiments/algorithms/mlr3hyperband.R")
+source("experiments/algorithms/mlrintermbo.R")
+source("experiments/algorithms/smashy.R")
+
+# source("experiments/algorithms/bohb.R")
 
 
 # - test or real setup for better testing - 
@@ -14,8 +18,8 @@ switch(SETUP,
 		# overwrite registry
 		OVERWRITE = TRUE
 		# termination criterion for each run
-		RUNTIME_MAX = 60L
-    # registry name for storing files on drive 
+		BUDGET_MAX_FACTOR = 10L 
+    	# registry name for storing files on drive 
 		registry_name = "reg_temp"
 		# replications
 		REPLS = 1L 
@@ -24,7 +28,7 @@ switch(SETUP,
 		# overwrite registry?
 		OVERWRITE = FALSE
 		# termination criterion for each run
-		RUNTIME_MAX = 302400
+		BUDGET_MAX_FACTOR = 100L # Budget is lbmax * 100 * d
     	# registry name for storing files on drive     
 		registry_name = "reg"
 		# replications
@@ -41,24 +45,36 @@ packages = c(
   "paradox", 
   "checkmate", 
   "bbotk", 
-  "data.table",
-  "mlr3hyperband"
+  "mlr3hyperband", 
+  "mlrintermbo", 
+  "miesmuschel"
 ) 
 
 lapply(packages, library, character.only = TRUE)
+
 
 
 # --- 1. PROBLEM DESIGN ---
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
-surrogates = c("nb301", "branin")# , "lcbench")# , "rbv2_aknn")
+surrogates = c("nb301", "lcbench") # , "fcnet")
 
 # Data: Surrogate instances provided by Flo and Lennart 
 surr_data = lapply(surrogates, function(surr) {
 	
 	cfg = cfgs(surr, workdir = SURROGATE_LOCATION)
 	cfg$setup()
+
+	# path = file.path(cfg$subdir, "domain.json")
+
+	# WILL BE DONE BY LENNART AND FLO
+	# if (surr == "branin")
+	# 	path = file.path(cfg$workdir, "branin", "domain.json")
+
+	# also transform and save the domain (needed for python calls)
+	# if (!file.exists(path))
+	# 	convertParamSetConfigspace(cfg = cfg, path = path)
 
 	return(cfg)
 })
@@ -80,14 +96,17 @@ pdes = lapply(surr_data, function(d) {
 	cdids = codomain$ids()
 
 	if (length(cdids) >= 2) {
-		objdf = data.table(type = c("SO", "MO"), objectives = list(c(cdids[1]), c(cdids[1:2])))
+		objdf = data.table(objectives = list(c(cdids[1]), c(cdids[1:2])))
 	}
 	if (length(cdids) == 1) {
-		objdf = data.table(type = c("SO"), objectives = list(c(cdids[1])))
+		objdf = data.table(objectives = list(c(cdids[1])), nobjectives = 1)
 	}
 	
 	df = merge(x = tasks, y = objdf)
 	names(df)[1] = "task"
+
+	df$nobjectives = lapply(df$objectives, length)
+	df$objectives_scalar = lapply(df$objectives, function(x) paste(x, collapse = ", "))
 
 	return(df)
 })
@@ -95,40 +114,67 @@ pdes = lapply(surr_data, function(d) {
 names(pdes) = surrogates
 
 
-readProblem = function(data, job, task, type, objectives, ...) {
+readProblem = function(data, job, task, objectives, ...) {
+
+	nobjectives = length(objectives)
+
+	dom = data$param_set
+
+	# Get the upper budget limit
+	param_ids = dom$ids()
+	budget_idx = which(dom$tags %in% c("budget", "fidelity"))
+	budget_lower = dom$lower[budget_idx]
+	budget_upper = dom$upper[budget_idx]
+
+	if (length(budget_idx) > 1) {
+		# modify the param_set
+		for (i in seq(2, length(budget_idx))) {
+			data$param_set$params[[param_ids[budget_idx[i]]]]$tags = paste0("budget_", i)
+		}
+	}
+
+	# We give a total budget of lbmax * 100 * d
+	BUDGET_MAX = BUDGET_MAX_FACTOR * budget_upper * length(param_ids)
 
 	# Get the objective function
 	# For branin the interface is slghtly different 
-	if (data$id != "Branin")
-		obj = data$get_objective(target_variables = objectives)
-	else 
-		obj = data$get_objective()		
 
-
-	if (type == "SO") {
+	if (is.na(task)) {
+		obj = data$get_objective(target_variables = objectives)		
+	} else {
+		obj = data$get_objective(task = task, target_variables = objectives)	
+	}		
+		
+	if (nobjectives == 1) {
 		ins = OptimInstanceSingleCrit$new(
 		  objective = obj,
-		  terminator = trm("evals", n_evals = 30L) # TODO: Budget Terminator 
+		  terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
 		)
 	} 
 
-	if (type == "MO") {
+	if (nobjectives > 1) {
 		ins = OptimInstanceMultiCrit$new(
 		  objective = obj,
-		  terminator = trm("evals", n_evals = 30L) # TODO: Budget Terminator 
+		  terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
 		)		
 	}
 
-	return(ins)
+
+	return(list(name = data$model_name, ins = ins, task = task)) 
 }
 
 
 # --- 2. ALGORITHM DESIGN ---
 
-# TODO: Specify proper algorithm design 
+# TODO: Specify proper algorithm design --> Ablation analysis 
 ALGORITHMS = list(
-    randomsearch = list(fun = randomsearch, ades = data.table()), 
-    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table())
+    randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
+    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = c(3))), 
+    mlrintermbo = list(fun = mlrintermbo, ades = data.table()), 
+    smashy = list(fun = smashy, ades = data.table()) 
 )
 
 ades = lapply(ALGORITHMS, function(x) x$ades)
+
+
+# instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))

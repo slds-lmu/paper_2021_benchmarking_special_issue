@@ -4,3 +4,5 @@ tmp*
 *hdf5
 *rds
 *onnx
+
+experiments/problems/
