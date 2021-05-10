@@ -25,8 +25,6 @@ smashy = function(data, job, instance) {
 
 	search_space = objective$domain$search_space(search_space_new)
 
-	trafo_old = search_space$
-
 	search_space$trafo = function(x, param_set) {
 	  # x$batch_size = as.integer(round(exp(x$batch_size)))
 	  # x$learning_rate = exp(x$learning_rate)

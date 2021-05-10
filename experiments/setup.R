@@ -17,7 +17,8 @@ for (i in seq_along(surr_data)) {
 		name = names(surr_data)[i], 
 		data = surr_data[[i]], 
 		fun = readProblem,
-		reg = reg
+		reg = reg, 
+		seed = i
 	)	
 }
 
