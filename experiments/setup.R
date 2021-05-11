@@ -2,6 +2,9 @@
 
 library(batchtools)
 
+# Test setup with reduced budget (see below) or real setup 
+SETUP = "TEST"
+
 source("experiments/config.R")
 
 lapply(packages, require, character.only = TRUE)

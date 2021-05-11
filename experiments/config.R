@@ -8,9 +8,6 @@ source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 source("experiments/algorithms/bohb.R")
 
-# Test setup with reduced budget (see below) or real setup 
-SETUP = "TEST"
-
 switch(SETUP, 
 	"TEST" = {
 		# overwrite registry
@@ -50,7 +47,6 @@ lapply(packages, library, character.only = TRUE)
 
 
 # --- 1. PROBLEM DESIGN ---
-
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
