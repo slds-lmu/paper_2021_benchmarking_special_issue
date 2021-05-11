@@ -8,14 +8,14 @@ source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
 		# overwrite registry
 		OVERWRITE = TRUE
 		# termination criterion for each run
-		BUDGET_MAX_FACTOR = 2L 
+		BUDGET_MAX_FACTOR = 5L 
     	# registry name for storing files on drive 
 		registry_name = "reg_temp"
 		# replications

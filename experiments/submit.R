@@ -1,10 +1,19 @@
+# TODO: Clean up the script 
+
+resources.serial.default = list(
+  walltime = 3600L * 24L * 2L, memory = 1024L * 2L,
+  clusters = "serial", max.concurrent.jobs = 1000L # get name from lrz homepage)
+)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "eta", "full_budget"))
 
 tosubmit = tab[nobjectives == 1, ]
-tosubmit = tosubmit[task == "3945", ]
 
-submitJobs(tosubmit)
+# Testing every version of algorithm / problem / task with full budget
+tosubmit = tosubmit[, .SD[which.min(job.id)], by = c("problem", "task", "algorithm", "full_budget")]
+tosubmit = rbind(tosubmit[problem == "nb301", ], tosubmit[task == "189873", ])
+
+submitJobs(tosubmit, resources = resources.serial.default)
 
 # Visualize the outcome 
 
