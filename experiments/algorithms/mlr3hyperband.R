@@ -7,5 +7,5 @@ mlr3hyperband = function(data, job, instance, eta) {
 
 	optimizer$optimize(instance$ins)
 
-    return(list(archive = instance$archive))
+    return(list(archive = instance$ins$archive))
 }

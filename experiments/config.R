@@ -47,7 +47,8 @@ packages = c(
   "bbotk", 
   "mlr3hyperband", 
   "mlrintermbo", 
-  "miesmuschel"
+  "miesmuschel",
+  "mlr3learners"
 ) 
 
 lapply(packages, library, character.only = TRUE)
@@ -170,7 +171,7 @@ readProblem = function(data, job, task, objectives, ...) {
 ALGORITHMS = list(
     randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = c(3))), 
-    mlrintermbo = list(fun = mlrintermbo, ades = data.table()), 
+    mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE), surrogate = "regr.randomForest")), 
     smashy = list(fun = smashy, ades = data.table()) 
 )
 
@@ -178,3 +179,8 @@ ades = lapply(ALGORITHMS, function(x) x$ades)
 
 
 # instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))
+# instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_accuracy"))
+
+# Problems: 
+# - Trafos abändern --> LCBench
+# - Budget bei Smashy? 

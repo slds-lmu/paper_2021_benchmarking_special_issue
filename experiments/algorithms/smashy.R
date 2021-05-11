@@ -25,10 +25,10 @@ smashy = function(data, job, instance) {
 
 	search_space = objective$domain$search_space(search_space_new)
 
+	trafo_old = ins$search_space$trafo
+
 	search_space$trafo = function(x, param_set) {
-	  # x$batch_size = as.integer(round(exp(x$batch_size)))
-	  # x$learning_rate = exp(x$learning_rate)
-	  # x$max_units = as.integer(round(exp(x$max_units)))
+	  x = trafo_old(x, param_set)
 	  x[[budget_idx]] = as.integer(exp(x[[budget_idx]]))
 	  x
 	}
@@ -36,9 +36,7 @@ smashy = function(data, job, instance) {
 	# Adapt terminator (transformation due to log-scale in budget)
 	# d * 100 * lbmax
 	terminator = trm("budget", budget = length(param_ids) * BUDGET_MAX_FACTOR * budget_upper, aggregate = function(x) sum(exp(as.numeric(x))))
-
-	ins = OptimInstanceSingleCrit$new(objective = objective, terminator = terminator, search_space = search_space)
-
+	
 	scalor = scl("one") # scl("nondom") for multi-objective
 	selector = sel("best", scalor)
 	surrogate_learner = mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))
@@ -55,6 +53,7 @@ smashy = function(data, job, instance) {
 	  fidelity_steps = 109, # ~ (52 - 1)/exp(-0.75) + 1
 	  filter_with_max_budget = TRUE
 	)
+
 
 	optimizer$optimize(ins)
 
