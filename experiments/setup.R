@@ -32,3 +32,6 @@ addExperiments(
   algo.designs = ades, 
   repls = REPLS)
 
+
+# libxssm
+# libxc
