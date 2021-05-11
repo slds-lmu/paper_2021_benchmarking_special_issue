@@ -8,7 +8,7 @@ source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "TEST"
+SETUP = "REAL"
 
 switch(SETUP, 
 	"TEST" = {
