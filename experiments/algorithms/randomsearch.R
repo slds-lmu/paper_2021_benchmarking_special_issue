@@ -12,7 +12,7 @@ randomsearch = function(data, job, instance, full_budget) {
 		# hand over a trafo that returns a constant value 
 		ins$search_space$trafo = function(x, param_set) {
 			x = trafo_old(x, param_set)
-			x$epoch = ins$search_space$params$epoch$upper
+			x$epoch = as.integer(ins$search_space$params$epoch$upper)
 			x
 		}
 	} # else {
@@ -32,11 +32,13 @@ randomsearch = function(data, job, instance, full_budget) {
 	# }
 
 	# TODO: RANDOMSEARCH ALWAYS SHALL OPTIMIZE ON LOG-SCALE IF BUDGET IS NOT FULL
+	start_t = Sys.time()
 	opt('random_search')$optimize(ins)
+	end_t = Sys.time()
 
 	if (full_budget) {
 		ins$archive$data$epoch = ins$search_space$params$epoch$upper
 	}
 
-    return(list(archive = ins$archive))
+    return(list(archive = ins$archive, runtime = end_t - start_t))
 }

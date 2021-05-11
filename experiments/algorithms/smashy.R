@@ -36,7 +36,9 @@ smashy = function(data, job, instance) {
 	# Adapt terminator (transformation due to log-scale in budget)
 	# d * 100 * lbmax
 	terminator = trm("budget", budget = length(param_ids) * BUDGET_MAX_FACTOR * budget_upper, aggregate = function(x) sum(exp(as.numeric(x))))
-	
+
+	ins = OptimInstanceSingleCrit$new(objective = objective, terminator = terminator, search_space = search_space)
+
 	scalor = scl("one") # scl("nondom") for multi-objective
 	selector = sel("best", scalor)
 	surrogate_learner = mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))
@@ -54,8 +56,9 @@ smashy = function(data, job, instance) {
 	  filter_with_max_budget = TRUE
 	)
 
-
+	start_t = Sys.time()
 	optimizer$optimize(ins)
+	end_t = Sys.time()
 
-    return(list(archive = ins$archive))
+    return(list(archive = ins$archive, runtime = end_t - start_t))
 }
