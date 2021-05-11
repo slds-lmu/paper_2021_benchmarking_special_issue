@@ -2,6 +2,8 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate) {
 
 	# TODO: Algorithm Design of mlrmbo
 
+	ins = instance$ins
+
 	trafo_old = ins$search_space$trafo
 
 	if (full_budget) {
@@ -17,7 +19,7 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate) {
 	optimizer = OptimizerInterMBO$new()
 
 	start_t = Sys.time()
-	optimizer$optimize(instance$ins)
+	optimizer$optimize(ins)
 	end_t = Sys.time()
 
     return(list(archive = ins$archive, runtime = end_t - start_t))

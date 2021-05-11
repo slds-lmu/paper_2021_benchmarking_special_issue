@@ -1,4 +1,3 @@
-library(ggplot2)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "eta", "full_budget"))
 
@@ -29,6 +28,9 @@ dfs = lapply(seq_len(nrow(res)), function(i) {
 df = do.call(rbind, dfs)
 
 df$algorithm_variant = paste0(df$algorithm, ifelse(!df$full_budget | is.na(df$full_budget), "", "_fullbudget"))
+
+
+library(ggplot2)
 
 p = ggplot(data = df, aes(x = log(budget_cum), y = y_cum, colour = algorithm_variant, group = job.id)) + geom_line() 
 p
