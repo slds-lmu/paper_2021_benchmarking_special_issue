@@ -10,13 +10,15 @@ lapply(packages, require, character.only = TRUE)
 
 reg = safeSetupRegistry(registry_name, OVERWRITE, packages, "experiments/config.R")
 
+
+
 # --- 2. ADD PROBLEMS, ALGORITHMS, EXPERIMENTS ---
 
 for (i in seq_along(surr_data)) {
 	addProblem(
 		name = names(surr_data)[i], 
 		data = surr_data[[i]], 
-		fun = readProblem,
+		fun = readProblem, # sets up the optimization instances 
 		reg = reg, 
 		seed = i
 	)	

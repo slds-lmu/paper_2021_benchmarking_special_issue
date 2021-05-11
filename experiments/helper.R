@@ -66,3 +66,54 @@ convertParamSetConfigspace = function(cfg, path) {
   })  
 
 }
+
+
+
+readProblem = function(data, job, task, objectives, ...) {
+
+  nobjectives = length(objectives)
+
+  dom = data$param_set
+
+  # Get the upper budget limit
+  param_ids = dom$ids()
+  budget_idx = which(dom$tags %in% c("budget", "fidelity"))
+  budget_lower = dom$lower[budget_idx]
+  budget_upper = dom$upper[budget_idx]
+
+  if (length(budget_idx) > 1) {
+    # modify the param_set
+    for (i in seq(2, length(budget_idx))) {
+      data$param_set$params[[param_ids[budget_idx[i]]]]$tags = paste0("budget_", i)
+    }
+  }
+
+  # We give a total budget of lbmax * 100 * d
+  BUDGET_MAX = BUDGET_MAX_FACTOR * budget_upper * length(param_ids)
+
+  # Get the objective function
+  # For branin the interface is slghtly different 
+
+  if (is.na(task)) {
+    obj = data$get_objective(target_variables = objectives)   
+  } else {
+    obj = data$get_objective(task = task, target_variables = objectives)  
+  }   
+    
+  if (nobjectives == 1) {
+    ins = OptimInstanceSingleCrit$new(
+      objective = obj,
+      terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
+    )
+  } 
+
+  if (nobjectives > 1) {
+    ins = OptimInstanceMultiCrit$new(
+      objective = obj,
+      terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
+    )   
+  }
+
+
+  return(list(name = data$model_name, ins = ins, task = task)) 
+}

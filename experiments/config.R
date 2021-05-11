@@ -7,36 +7,33 @@ source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 
-# source("experiments/algorithms/bohb.R")
-
-
-# - test or real setup for better testing - 
-SETUP = "TEST"
+# Test setup with reduced budget (see below) or real setup 
+SETUP = "REAL"
 
 switch(SETUP, 
 	"TEST" = {
 		# overwrite registry
 		OVERWRITE = TRUE
 		# termination criterion for each run
-		BUDGET_MAX_FACTOR = 5L 
+		BUDGET_MAX_FACTOR = 2L 
     	# registry name for storing files on drive 
 		registry_name = "reg_temp"
 		# replications
 		REPLS = 1L 
 	},
 	"REAL" = {
-		# overwrite registry?
+		# do never overwrite registry
 		OVERWRITE = FALSE
 		# termination criterion for each run
 		BUDGET_MAX_FACTOR = 100L # Budget is lbmax * 100 * d
     	# registry name for storing files on drive     
 		registry_name = "reg"
 		# replications
-		REPLS = 30L
+		REPLS = 30L 
 	}
 )
 
-# - packages - 
+# Load packages
 packages = c(
   "batchtools",  
   "data.table",
@@ -59,23 +56,14 @@ lapply(packages, library, character.only = TRUE)
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
-surrogates = c("nb301", "lcbench") # , "fcnet")
+# TODO: Include randombot 
+surrogates = c("nb301", "lcbench")
 
-# Data: Surrogate instances provided by Flo and Lennart 
+# Downloads all surrogate data 
 surr_data = lapply(surrogates, function(surr) {
 	
 	cfg = cfgs(surr, workdir = SURROGATE_LOCATION)
 	cfg$setup()
-
-	# path = file.path(cfg$subdir, "domain.json")
-
-	# WILL BE DONE BY LENNART AND FLO
-	# if (surr == "branin")
-	# 	path = file.path(cfg$workdir, "branin", "domain.json")
-
-	# also transform and save the domain (needed for python calls)
-	# if (!file.exists(path))
-	# 	convertParamSetConfigspace(cfg = cfg, path = path)
 
 	return(cfg)
 })
@@ -83,7 +71,8 @@ surr_data = lapply(surrogates, function(surr) {
 names(surr_data) = surrogates
 
 
-# Problem design contains the task, objectives (SO / MO)
+# Problem design is a data.frame: 
+# | tasks | objectives | 
 pdes = lapply(surr_data, function(d) {
 
 	## Read out the tasks 
@@ -100,12 +89,13 @@ pdes = lapply(surr_data, function(d) {
 		objdf = data.table(objectives = list(c(cdids[1]), c(cdids[1:2])))
 	}
 	if (length(cdids) == 1) {
-		objdf = data.table(objectives = list(c(cdids[1])), nobjectives = 1)
+		objdf = data.table(objectives = list(c(cdids[1])))
 	}
 	
 	df = merge(x = tasks, y = objdf)
 	names(df)[1] = "task"
 
+	# Redundant information, but makes it easier to filter the summarizeExperiments() - table later on
 	df$nobjectives = lapply(df$objectives, length)
 	df$objectives_scalar = lapply(df$objectives, function(x) paste(x, collapse = ", "))
 
@@ -115,59 +105,11 @@ pdes = lapply(surr_data, function(d) {
 names(pdes) = surrogates
 
 
-readProblem = function(data, job, task, objectives, ...) {
-
-	nobjectives = length(objectives)
-
-	dom = data$param_set
-
-	# Get the upper budget limit
-	param_ids = dom$ids()
-	budget_idx = which(dom$tags %in% c("budget", "fidelity"))
-	budget_lower = dom$lower[budget_idx]
-	budget_upper = dom$upper[budget_idx]
-
-	if (length(budget_idx) > 1) {
-		# modify the param_set
-		for (i in seq(2, length(budget_idx))) {
-			data$param_set$params[[param_ids[budget_idx[i]]]]$tags = paste0("budget_", i)
-		}
-	}
-
-	# We give a total budget of lbmax * 100 * d
-	BUDGET_MAX = BUDGET_MAX_FACTOR * budget_upper * length(param_ids)
-
-	# Get the objective function
-	# For branin the interface is slghtly different 
-
-	if (is.na(task)) {
-		obj = data$get_objective(target_variables = objectives)		
-	} else {
-		obj = data$get_objective(task = task, target_variables = objectives)	
-	}		
-		
-	if (nobjectives == 1) {
-		ins = OptimInstanceSingleCrit$new(
-		  objective = obj,
-		  terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
-		)
-	} 
-
-	if (nobjectives > 1) {
-		ins = OptimInstanceMultiCrit$new(
-		  objective = obj,
-		  terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
-		)		
-	}
-
-
-	return(list(name = data$model_name, ins = ins, task = task)) 
-}
-
 
 # --- 2. ALGORITHM DESIGN ---
 
-# TODO: Specify proper algorithm design --> Ablation analysis 
+# TODO: Re-evaluate algorithm design 
+# TODO: Ablation analysis 
 ALGORITHMS = list(
     randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = c(3))), 
@@ -180,7 +122,3 @@ ades = lapply(ALGORITHMS, function(x) x$ades)
 
 # instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))
 # instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_accuracy"))
-
-# Problems: 
-# - Trafos abändern --> LCBench
-# - Budget bei Smashy? 

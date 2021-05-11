@@ -15,7 +15,6 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate) {
 		}
 	} 
 
-
 	optimizer = OptimizerInterMBO$new()
 
 	start_t = Sys.time()
