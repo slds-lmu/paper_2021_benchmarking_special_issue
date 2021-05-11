@@ -10,8 +10,6 @@ lapply(packages, require, character.only = TRUE)
 
 reg = safeSetupRegistry(registry_name, OVERWRITE, packages, "experiments/config.R")
 
-
-
 # --- 2. ADD PROBLEMS, ALGORITHMS, EXPERIMENTS ---
 
 for (i in seq_along(surr_data)) {

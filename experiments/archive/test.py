@@ -51,7 +51,9 @@ class MyWorker(Worker):
         return(config)
 
 
-def main(argv):
+def main(args):
+    parser = argparse.ArgumentParser(description="Do something.")
+parser.add_argument("-x", "--xcenter", type=float, default= 2, required=False)
     problem = argv[0]
     task = argv[1]
     objectives = argv[2:]

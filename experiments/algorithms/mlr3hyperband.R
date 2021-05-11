@@ -9,5 +9,5 @@ mlr3hyperband = function(data, job, instance, eta) {
 	optimizer$optimize(instance$ins)
 	end_t = Sys.time()
 
-    return(list(archive = instance$ins$archive, runtime = end_t - start_t))
+    return(list(archive = instance$ins$archive$data, runtime = end_t - start_t))
 }

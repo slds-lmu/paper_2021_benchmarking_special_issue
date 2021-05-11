@@ -6,16 +6,15 @@ source("experiments/algorithms/randomsearch.R")
 source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
+source("experiments/algorithms/bohb.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
 		# overwrite registry
 		OVERWRITE = TRUE
-		# termination criterion for each run
-		BUDGET_MAX_FACTOR = 5L 
     	# registry name for storing files on drive 
 		registry_name = "reg_temp"
 		# replications
@@ -25,8 +24,6 @@ switch(SETUP,
 		# do never overwrite registry
 		OVERWRITE = FALSE
 		# termination criterion for each run
-		BUDGET_MAX_FACTOR = 100L # Budget is lbmax * 100 * d
-    	# registry name for storing files on drive     
 		registry_name = "reg"
 		# replications
 		REPLS = 30L 
@@ -53,6 +50,7 @@ lapply(packages, library, character.only = TRUE)
 
 
 # --- 1. PROBLEM DESIGN ---
+
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
@@ -114,7 +112,8 @@ ALGORITHMS = list(
     randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = c(3))), 
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE), surrogate = "regr.randomForest")), 
-    smashy = list(fun = smashy, ades = data.table()) 
+    smashy = list(fun = smashy, ades = data.table()), 
+    bohb = list(fun = bohb, ades = data.table()) 
 )
 
 ades = lapply(ALGORITHMS, function(x) x$ades)

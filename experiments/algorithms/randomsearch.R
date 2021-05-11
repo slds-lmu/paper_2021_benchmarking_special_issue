@@ -28,5 +28,5 @@ randomsearch = function(data, job, instance, full_budget) {
 		ins$archive$data$epoch = ins$search_space$params$epoch$upper
 	}
 
-    return(list(archive = ins$archive, runtime = end_t - start_t))
+    return(list(archive = ins$archive$data, runtime = end_t - start_t))
 }

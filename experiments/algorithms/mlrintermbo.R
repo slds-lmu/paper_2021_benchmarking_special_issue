@@ -25,5 +25,5 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate) {
 	optimizer$optimize(ins)
 	end_t = Sys.time()
 
-    return(list(archive = ins$archive, runtime = end_t - start_t))
+    return(list(archive = ins$archive$data, runtime = end_t - start_t))
 }

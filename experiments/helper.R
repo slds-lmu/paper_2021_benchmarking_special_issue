@@ -19,55 +19,6 @@ safeSetupRegistry = function(registry_name, overwrite, packages, def) {
 }
 
 
-convertParamSetConfigspace = function(cfg, path) {
-
-  library(reticulate)
-  cs = import("ConfigSpace")
-  json = import("ConfigSpace")$read_and_write$json
-
-  objective = cfg$get_objective()
-
-  config_space = cs$ConfigurationSpace()
-  domain = objective$domain
-
-  # TODO: TRAFO! 
-
-  for (par in domain$params) {
-
-    is_budget = par$id == "budget"
-
-    if (par$id == "budget") {
-      new_id = "fidelity"
-    } else {
-      new_id = par$id
-    }
-
-    if (par$class == "ParamFct") {
-      config_space$add_hyperparameter(cs$CategoricalHyperparameter(
-        name = new_id, choices = par$levels))
-    }
-
-    if (par$class == "ParamInt") {
-      config_space$add_hyperparameter(cs$UniformIntegerHyperparameter(
-        name = new_id, lower = par$lower, upper = par$upper))
-    }
-
-    if (par$class == "ParamDbl") {
-      config_space$add_hyperparameter(cs$UniformIntegerHyperparameter(
-        name = new_id, lower = par$lower, upper = par$upper, trafo = trafo))
-    }
-
-  }
-
-  py <- import_builtins()
-
-  with(py$open(file.path(path, "domain.json"), "w") %as% file, {
-    file$write(json$write(config_space))
-  })  
-
-}
-
-
 
 readProblem = function(data, job, task, objectives, ...) {
 
@@ -89,7 +40,10 @@ readProblem = function(data, job, task, objectives, ...) {
   }
 
   # We give a total budget of lbmax * 100 * d
-  BUDGET_MAX = BUDGET_MAX_FACTOR * budget_upper * length(param_ids)
+  # Alternative: The maximum budget is the one that hyperband is given: 
+  BUDGET_MAX = compute_total_budget(budget_upper, budget_lower, 2)
+
+  # BUDGET_MAX = BUDGET_MAX_FACTOR * budget_upper * length(param_ids)
 
   # Get the objective function
   # For branin the interface is slghtly different 
@@ -116,4 +70,23 @@ readProblem = function(data, job, task, objectives, ...) {
 
 
   return(list(name = data$model_name, ins = ins, task = task)) 
+}
+
+
+compute_total_budget = function(bupper, blower, eta) {
+  smax = floor(log(bupper / blower, eta))
+  B = (smax + 1) * bupper
+  brackets = seq(0, smax)
+
+  out = lapply(brackets, function(s) {
+    n = ceiling(B / bupper * eta^s / (s + 1))
+    r = bupper * eta^(-s)
+    out = lapply(seq(0, s), function(i) {
+      ni = floor(n * eta^(-i))
+      ri = r * eta^i
+      ni * ri
+    })
+    sum(unlist(out))
+  })
+  sum(unlist(out))
 }
