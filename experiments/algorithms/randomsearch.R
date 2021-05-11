@@ -11,27 +11,15 @@ randomsearch = function(data, job, instance, full_budget) {
 	if (full_budget) {
 		# hand over a trafo that returns a constant value 
 		ins$search_space$trafo = function(x, param_set) {
-			x = trafo_old(x, param_set)
+			if (!is.null(trafo_old))
+				x = trafo_old(x, param_set)
 			x$epoch = as.integer(ins$search_space$params$epoch$upper)
 			x
 		}
-	} # else {
-	# 	budget_log = ParamDbl$new(id = budget_id, lower = log(ins$search_space$params$epoch$lower), upper = log(ins$search_space$params$epoch$upper), tag = c("budget"))
-		
-	# 	search_space_new = ins$search_space$clone()
-	# 	search_space_new = search_space_new$subset(ins$search_space$ids()[- budget_idx])
-	# 	search_space_new$add(budget_log)
-
-	# 	# otherwise, we search on a log-scale 
-	# 	search_space_new$trafo = function(x, param_set) {
-	# 	  x$epoch = as.integer(round(exp(x$epoch)))
-	# 	  x
-	# 	}
-
-	# 	ins$search_space = search_space_new
-	# }
+	} 
 
 	# TODO: RANDOMSEARCH ALWAYS SHALL OPTIMIZE ON LOG-SCALE IF BUDGET IS NOT FULL
+	
 	start_t = Sys.time()
 	opt('random_search')$optimize(ins)
 	end_t = Sys.time()

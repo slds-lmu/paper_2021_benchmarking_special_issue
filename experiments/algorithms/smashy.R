@@ -2,42 +2,35 @@ smashy = function(data, job, instance) {
 
 	ins = instance$ins$clone()
 	objective = ins$objective
-
-	budget_idx = which(ins$search_space$tags %in% c("budget", "fidelity"))
-	budget_id = ins$search_space$ids()[budget_idx]
-
 	search_space_old = ins$search_space
+
 	param_ids = search_space_old$ids()
 
-	# Smashy needs another instance 
+	budget_idx = which(ins$search_space$tags %in% c("budget", "fidelity"))
+	budget_id = param_ids[budget_idx]
 	budget_lower = search_space_old$params[[budget_idx]]$lower
 	budget_upper = search_space_old$params[[budget_idx]]$upper
+	
+	params_to_keep = param_ids[- budget_idx]
 
-	search_space_new = lapply(names(search_space_old$params), function(x) {
-		if (x == budget_id) {
-			out = to_tune(p_int(budget_lower, budget_upper, logscale = TRUE, tags = "budget"))
-		} else {
-			out = to_tune()
-		}
-	})
+	# Get all parameters except the budget parameter 
+	search_space_new = ParamSet$new(search_space_old$params[params_to_keep])
+	search_space_new$add(ParamDbl$new(id = budget_id, lower = log(budget_lower), upper = log(budget_upper), tags = "budget"))
 
-	names(search_space_new) = names(search_space_old$params)
+	trafo_old = search_space_old$trafo
 
-	search_space = objective$domain$search_space(search_space_new)
-
-	trafo_old = ins$search_space$trafo
-
-	search_space$trafo = function(x, param_set) {
-	  x = trafo_old(x, param_set)
-	  x[[budget_idx]] = as.integer(exp(x[[budget_idx]]))
+	search_space_new$trafo = function(x, param_set) {
+	  if (!is.null(trafo_old))
+		x = trafo_old(x, param_set)
+	  x$epoch = as.integer(exp(x$epoch))
 	  x
 	}
 
 	# Adapt terminator (transformation due to log-scale in budget)
 	# d * 100 * lbmax
-	terminator = trm("budget", budget = length(param_ids) * BUDGET_MAX_FACTOR * budget_upper, aggregate = function(x) sum(exp(as.numeric(x))))
+	terminator = trm("budget", budget = BUDGET_MAX_FACTOR * budget_upper, aggregate = function(x) sum(exp(as.numeric(x))))
 
-	ins = OptimInstanceSingleCrit$new(objective = objective, terminator = terminator, search_space = search_space)
+	ins = OptimInstanceSingleCrit$new(objective = objective, terminator = terminator, search_space = search_space_new)
 
 	scalor = scl("one") # scl("nondom") for multi-objective
 	selector = sel("best", scalor)

@@ -15,7 +15,7 @@ switch(SETUP,
 		# overwrite registry
 		OVERWRITE = TRUE
 		# termination criterion for each run
-		BUDGET_MAX_FACTOR = 2L 
+		BUDGET_MAX_FACTOR = 5L 
     	# registry name for storing files on drive 
 		registry_name = "reg_temp"
 		# replications
