@@ -10,12 +10,8 @@ smashy = function(data, job, instance) {
 	budget_id = param_ids[budget_idx]
 	budget_lower = search_space_old$params[[budget_idx]]$lower
 	budget_upper = search_space_old$params[[budget_idx]]$upper
-	
-	  eta = 3
-	  config_max_b = budget_upper / budget_lower
-	  bracket_max = floor(log(budget_upper, eta) - log(budget_lower, eta)) + 1
-	  BUDGET_MAX = bracket_max * config_max_b
-	
+
+	BUDGET_MAX = compute_total_budget(budget_upper, budget_lower, 2)
 	params_to_keep = param_ids[- budget_idx]
 
 	# Get all parameters except the budget parameter 
@@ -31,8 +27,6 @@ smashy = function(data, job, instance) {
 	  x
 	}
 
-	# Adapt terminator (transformation due to log-scale in budget)
-	# d * 100 * lbmax
 	terminator = trm("budget", budget = BUDGET_MAX, aggregate = function(x) sum(exp(as.numeric(x))))
 
 	ins = OptimInstanceSingleCrit$new(objective = objective, terminator = terminator, search_space = search_space_new)

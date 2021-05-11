@@ -101,6 +101,9 @@ def main(args): # hand over min and max budget here
     parser.add_argument("--problem", type=str, required=True)
     parser.add_argument("--tempdir", type=str, required=True)
     parser.add_argument("--task", type=str, required=True)
+    parser.add_argument("--minbudget", type=int, required=True)
+    parser.add_argument("--maxbudget", type=int, required=True)
+    parser.add_argument("--eta", type=int, required=True)
     args = parser.parse_args(args)
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None)
     NS.start()
@@ -111,7 +114,7 @@ def main(args): # hand over min and max budget here
     w.run(background=True)
     bohb = BOHB(configspace=w.get_configspace(),
                 run_id='example1', nameserver='127.0.0.1',
-                min_budget=1, max_budget=50)
+                min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta)
     res = bohb.run(n_iterations=1)
     bohb.shutdown(shutdown_workers=True)
     NS.shutdown()

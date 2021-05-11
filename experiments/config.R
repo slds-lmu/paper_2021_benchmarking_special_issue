@@ -44,8 +44,6 @@ packages = c(
 
 lapply(packages, library, character.only = TRUE)
 
-
-
 # --- 1. PROBLEM DESIGN ---
 
 SURROGATE_LOCATION = c("experiments/problems/")
@@ -106,10 +104,10 @@ names(pdes) = surrogates
 # TODO: Ablation analysis 
 ALGORITHMS = list(
     randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
-    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = c(3))), 
+    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 2)), 
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE), surrogate = "regr.randomForest")), 
     smashy = list(fun = smashy, ades = data.table()), 
-    bohb = list(fun = bohb, ades = data.table()) 
+    bohb = list(fun = bohb, ades = data.table(eta = 2)) 
 )
 
 ades = lapply(ALGORITHMS, function(x) x$ades)
