@@ -52,7 +52,7 @@ tab = data.table(
   n_races = length(iraceResults$allElites),
   n_elites = length(iraceResults$allElites[[length(iraceResults$allElites)]]),
   benchmark = "LCBench",
-  optimization_target = "val_balanced_accuracy"
+  optimization_target = "val_balanced_accuracy",
   test_target = "test_balanced_accuracy"
 )
 kable(tab)
