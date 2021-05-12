@@ -2,6 +2,9 @@
 
 library(batchtools)
 
+# Test setup with reduced budget (see below) or real setup 
+SETUP = "TEST"
+
 source("experiments/config.R")
 
 lapply(packages, require, character.only = TRUE)
@@ -9,8 +12,6 @@ lapply(packages, require, character.only = TRUE)
 # --- 1. SETUP REGISTRY ---
 
 reg = safeSetupRegistry(registry_name, OVERWRITE, packages, "experiments/config.R")
-
-
 
 # --- 2. ADD PROBLEMS, ALGORITHMS, EXPERIMENTS ---
 
