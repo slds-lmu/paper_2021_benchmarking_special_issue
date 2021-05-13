@@ -178,7 +178,6 @@ makeIraceOI = function(evals = 300) {
 
           workdir = "./irace/data/surrogates"
           cfg = cfgs(instance$cfg, workdir = workdir)
-          cfg$setup()
 
           objective = cfg$get_objective(task = instance$level, target_variables = instance$targets)
           test_objective = objective
@@ -206,7 +205,7 @@ makeIraceOI = function(evals = 300) {
             x
           }
 
-          budget_limit = 0.5 #search_space$length * 30 * budget_upper
+          budget_limit = search_space$length * 30 * budget_upper
 
           performance = mlr3misc::invoke(opt_objective_optimizable, objective = objective, 
             test_objective = test_objective, budget_limit = budget_limit, search_space = search_space, 
