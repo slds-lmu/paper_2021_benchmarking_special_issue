@@ -200,14 +200,13 @@ makeIraceOI = function(evals = 300) {
           search_space$add(ParamDbl$new(id = budget_id, lower = log(budget_lower), upper = log(budget_upper), tags = "budget"))
 
           domain_tafo = domain$trafo
-
           search_space$trafo = function(x, param_set) {
             if (!is.null(domain_tafo)) x = domain_tafo(x, param_set)
-            x[budget_id] = as.integer(exp(x[[budget_id]]))
+            x[budget_id] = if (domain$params[[budget_id]]$class == "ParamInt") as.integer(exp(x[[budget_id]])) else exp(x[[budget_id]])
             x
           }
 
-          budget_limit = 10 #search_space$length * 30 * budget_upper
+          budget_limit = 0.5 #search_space$length * 30 * budget_upper
 
           performance = mlr3misc::invoke(opt_objective_optimizable, objective = objective, 
             test_objective = test_objective, budget_limit = budget_limit, search_space = search_space, 
