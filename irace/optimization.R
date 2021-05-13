@@ -162,13 +162,7 @@ meta_domain = ps(
   random_interleave_random = p_lgl()
 )
 
-
-# objective_targets: target(s) being optimized by smashy
-# test_targets: target(s) to do test evaluation on by smashy
-# cfg: ...
-makeIraceOI = function(objective_targets, test_targets, cfg, evals = 300) {
-  assert_character(objective_targets, any.missing = FALSE, min.len = 1)
-  assert_character(test_targets, any.missing = FALSE, min.len = 1)
+makeIraceOI = function(evals = 300) {
 
   ObjectiveIrace = R6Class("ObjectiveIrace", inherit = bbotk::Objective,
     public = list(
@@ -181,9 +175,13 @@ makeIraceOI = function(objective_targets, test_targets, cfg, evals = 300) {
 
         eval = function(xs, instance) {
           t0 = Sys.time()
-          # CONFIGURE THIS FOR THE OBJECTIVE
-          objective = cfg$get_objective(task = instance, target_variables = objective_targets)
-          test_objective = cfg$get_objective(task = instance, target_variables = test_targets)
+
+          workdir = "./irace/data/surrogates"
+          cfg = cfgs(instance$cfg, workdir = workdir)
+          cfg$setup()
+
+          objective = cfg$get_objective(task = instance$level, target_variables = instance$targets)
+          test_objective = objective
           highest_budget_only = TRUE
           nadir = vapply(objective$codomain$tags, function(x) ifelse("minimize" %in% x, 1, 0), 0)
 
@@ -193,6 +191,7 @@ makeIraceOI = function(objective_targets, test_targets, cfg, evals = 300) {
           budget_id = param_ids[budget_idx]
           budget_lower = domain$params[[budget_idx]]$lower
           budget_upper = domain$params[[budget_idx]]$upper
+          if (instance$cfg == "rbv2_super") budget_lower = 3^(-3)
           
           params_to_keep = param_ids[- budget_idx]
 
@@ -204,11 +203,11 @@ makeIraceOI = function(objective_targets, test_targets, cfg, evals = 300) {
 
           search_space$trafo = function(x, param_set) {
             if (!is.null(domain_tafo)) x = domain_tafo(x, param_set)
-            x$epoch = as.integer(exp(x$epoch))
+            x[budget_id] = as.integer(exp(x[[budget_id]]))
             x
           }
 
-          budget_limit = 1 #search_space$length * budget_upper* 1
+          budget_limit = 10 #search_space$length * 30 * budget_upper
 
           performance = mlr3misc::invoke(opt_objective_optimizable, objective = objective, 
             test_objective = test_objective, budget_limit = budget_limit, search_space = search_space, 
@@ -216,6 +215,7 @@ makeIraceOI = function(objective_targets, test_targets, cfg, evals = 300) {
           time = as.numeric(difftime(Sys.time(), t0, units = "secs"))
           c(y = performance, time = time)
         }
+     
         res = future.apply::future_mapply(eval, xss, self$irace_instance)
         tab = as.data.table(t(res))
       }
@@ -227,9 +227,11 @@ makeIraceOI = function(objective_targets, test_targets, cfg, evals = 300) {
   OptimInstanceSingleCrit$new(objective = irace_objective, search_space = meta_search_space, terminator = trm("evals", n_evals = evals))
 }
 
-optimize_irace = function(objective_targets, test_targets, instances, cfg, evals = 300, instance_file, log_file) {
-  irace_instance = makeIraceOI(objective_targets, test_targets, cfg, evals)
-  optimizer_irace = opt("irace", instances = instances, logFile = log_file)
+optimize_irace = function(instances_plan, evals = 300, instance_file, log_file) {
+  assert_data_table(instances_plan)
+  instances_plan = mlr3misc::transpose_list(instances_plan)
+  irace_instance = makeIraceOI(evals)
+  optimizer_irace = opt("irace", instances = instances_plan, logFile = log_file)
   optimizer_irace$optimize(irace_instance)
   saveRDS(irace_instance, instance_file)
   irace_instance
