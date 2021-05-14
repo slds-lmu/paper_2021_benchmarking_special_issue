@@ -1,5 +1,7 @@
 # --- 0. SETUP ---
 
+setwd(here::here())
+
 source("experiments/helper.R")
 
 source("experiments/algorithms/randomsearch.R")
