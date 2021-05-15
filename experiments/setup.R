@@ -1,6 +1,7 @@
 # Setup script for initially setting up the benchmarks 
 
 library(batchtools)
+setwd(here::here())
 
 # Test setup with reduced budget (see below) or real setup 
 SETUP = "TEST"
@@ -32,6 +33,5 @@ for (i in 1:length(ALGORITHMS)) {
 addExperiments(
   reg = reg, 
   prob.designs = pdes,
-  algo.designs = ades, 
+  algo.designs = des, 
   repls = REPLS)
-
