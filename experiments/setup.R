@@ -1,6 +1,7 @@
 # Setup script for initially setting up the benchmarks 
 
 library(batchtools)
+setwd(here::here())
 
 
 source("experiments/config.R")
@@ -30,6 +31,5 @@ for (i in 1:length(ALGORITHMS)) {
 addExperiments(
   reg = reg, 
   prob.designs = pdes,
-  algo.designs = ades, 
+  algo.designs = des, 
   repls = REPLS)
-
