@@ -7,9 +7,10 @@ source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 source("experiments/algorithms/bohb.R")
+source("experiments/algorithms/hb.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
@@ -52,7 +53,7 @@ lapply(packages, library, character.only = TRUE)
 SURROGATE_LOCATION = c("experiments/problems/")
 
 # TODO: Include randombot 
-surrogates = c("nb301", "lcbench")
+surrogates = c("nb301", "lcbench") # , "rbv2_super")
 
 # Downloads all surrogate data 
 surr_data = lapply(surrogates, function(surr) {
@@ -103,14 +104,13 @@ names(pdes) = surrogates
 
 # --- 2. ALGORITHM DESIGN ---
 
-# TODO: Re-evaluate algorithm design 
-# TODO: Ablation analysis 
 ALGORITHMS = list(
     randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
-    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 2)), 
+    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), 
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE), surrogate = "regr.randomForest")), 
     smashy = list(fun = smashy, ades = data.table()), 
-    bohb = list(fun = bohb, ades = data.table(eta = 2)) 
+    bohb = list(fun = bohb, ades = data.table(eta = 3)), 
+    hb = list(fun = hb, ades = data.table(eta = 3))
 )
 
 ades = lapply(ALGORITHMS, function(x) x$ades)

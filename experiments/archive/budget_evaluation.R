@@ -2,41 +2,50 @@
 budget_upper = 52
 budget_lower = 1
 
-compute_total_budget = function(bupper, blower, eta) {
-	smax = floor(log(bupper / blower, eta))
-	B = (smax + 1) * bupper
-	brackets = seq(0, smax)
+library(mlr3hyperband)
+library(purrr)
 
-	out = lapply(brackets, function(s) {
-		n = ceiling(B / bupper * eta^s / (s + 1))
-		r = bupper * eta^(-s)
-		out = lapply(seq(0, s), function(i) {
-			ni = floor(n * eta^(-i))
-			ri = r * eta^i
-			ni * ri
-		})
-		sum(unlist(out))
-	})
-	sum(unlist(out))
+hyperband_brackets = function(R, eta) {
+  result = data.frame()
+  smax = floor(log(R, eta))
+  B = (smax + 1) * R
+
+  for (s in smax:0) {
+    n = ceiling((B / R) * ((eta^s) / (s + 1)))
+    r = R * eta^(-s)
+
+    for (i in 0:s) {
+      ni = floor(n * eta^(-i))
+      ri = r * eta^i
+      result = rbind(result, c(s, i, ri, ni, ri * ni))
+    }
+  }
+  set_names(result, c("bracket", "bracket_stage", "budget_scaled", "n_configs", "total_budget"))
 }
 
 
-total_number_of_evals = compute_total_budget(budget_upper, budget_lower, 3)
+brackets = hyperband_brackets(budget_upper, 2)
+total_budget = sum(brackets$total_budget)
 
 # Compare to a random search full run: 
-total_number_of_evals / budget_upper # 15 full evaluations of random search only? 
+total_budget / budget_upper 
 
-
-total_number_of_evals = compute_total_budget(budget_upper, budget_lower, 2)
+brackets = hyperband_brackets(budget_upper, 3)
+total_budget = sum(brackets$total_budget)
 
 # Compare to a random search full run: 
-total_number_of_evals / budget_upper # 35 with a eta of 2
-
+total_budget / budget_upper 
 
 # Total number of evaluations for the other usecase
 budget_upper = 98
-
-total_number_of_evals = compute_total_budget(budget_upper, budget_lower, 3)
+brackets = hyperband_brackets(budget_upper, 3)
+total_budget = sum(brackets$total_budget)
+print(total_budget)
 
 # Compare to a random search full run: 
-total_number_of_evals / budget_upper # 15 full evaluations of random search only? 
+total_budget / budget_upper # 23 full evaluations of random search only? 
+
+total_number_of_evals = compute_total_budget(budget_upper, budget_lower, 2)
+print(total_number_of_evals)
+
+total_number_of_evals / budget_upper

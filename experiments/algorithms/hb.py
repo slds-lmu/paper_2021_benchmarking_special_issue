@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import argparse
 import sys
-import os
 from ConfigSpace.read_and_write import json
 import onnxruntime
 from rpy2.robjects.packages import importr
@@ -13,7 +12,8 @@ from rpy2.robjects import pandas2ri
 from hpbandster.core.worker import Worker
 import hpbandster.core.nameserver as hpns
 import hpbandster.core.result as hpres
-from hpbandster.optimizers import BOHB as BOHB
+from hpbandster.optimizers import HyperBand as HB
+import time
 import logging
 import pickle
 
@@ -98,12 +98,13 @@ class lcbench(Worker):
             cs = json.read(json_string)
         return(cs)
 
+
 def compute_total_budget(res):
     df = res.get_pandas_dataframe()[0]
     return(sum(df['budget']))
 
+
 def main(args): # hand over min and max budget here 
-    logging.basicConfig(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description = "Do Something")
     parser.add_argument("--problem", type=str, required=True)
     parser.add_argument("--tempdir", type=str, required=True)
@@ -117,31 +118,29 @@ def main(args): # hand over min and max budget here
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None, working_directory=args.tempdir)
     NS.start()
     if args.problem == "nb301":
-        w = nb301(sleep_interval=0, nameserver='127.0.0.1',run_id='example1')
+        w = nb301(sleep_interval=0, nameserver='127.0.0.1', run_id='example1')
     if args.problem == "lcbench":
         w = lcbench(task = args.task, sleep_interval=0, nameserver='127.0.0.1',run_id='example1')
+    
     w.run(background=True)
-    bohb = BOHB(configspace=w.get_configspace(),
-                run_id='example1', nameserver='127.0.0.1',
-                min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta,
-                result_logger=result_logger)
-    res = bohb.run(n_iterations=1)
+
+    hb = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, result_logger = result_logger)
+    res = hb.run(n_iterations=1)
     total_budget_spent = compute_total_budget(res)
 
-    while total_budget_spent < args.fullbudget:
-        bohb = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res, result_logger=result_logger)
-        res = bohb.run(n_iterations=1)
+    # Iterate until the full budget is spent
+    while total_budget_spent < fullbudget:
+        print(total_budget_spent)
+        hb = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)
+        res = hb.run(n_iterations=1)
         total_budget_spent = compute_total_budget(res)
 
     with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
-        pickle.dump(res, fh)    
-    
-    bohb.shutdown(shutdown_workers=True)
+        pickle.dump(res, fh)  
+
+    hb.shutdown(shutdown_workers=True)
     NS.shutdown()
-    configs = res.get_pandas_dataframe()[0]
-    loss = res.get_pandas_dataframe()[1]
-    df = pd.concat([configs, loss.reset_index(drop = True)], axis = 1)
-    df.to_csv(args.tempdir + "/res.csv")
+
 
 
 if __name__ == "__main__":
