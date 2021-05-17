@@ -2,11 +2,11 @@ source("./irace/optimization.R")
 set.seed(1)
 library(tictoc)
 
-xs = list(budget_log_step = 0.0646, mu = 4.6069, sample = "random", survival_fraction = 0.2767,  # mu = 4.6069
+xs = list(budget_log_step = 0.0646, mu = 4.6069, sample = "random", survival_fraction = 0.2767, 
   filter_algorithm = "progressive", surrogate_learner = "ranger", filter_with_max_budget = FALSE,  
   filter_factor_first = 2.7849, filter_factor_last = 3.9019,  filter_select_per_tournament = 0.3001, 
-  random_interleave_fraction = 0.2, random_interleave_random = FALSE, filter_factor_first.end = 1,
-  filter_factor_last.end = 2, filter_select_per_tournament.end = 0.2, random_interleave_fraction.end = 0.1)
+  random_interleave_fraction = 0, random_interleave_random = FALSE, filter_factor_first.end = 2.7849,
+  filter_factor_last.end = 3.9019, filter_select_per_tournament.end = 0.3001, random_interleave_fraction.end = 1)
 
 meta_search_space = ps(
   budget_log_step = p_dbl(log(2) / 4, log(2) * 4, logscale = TRUE),
@@ -59,6 +59,8 @@ search_space$trafo = function(x, param_set) {
   x
 }
 
-parameter = c(xs, list(objective = objective, search_space = search_space, budget_limit = 10))
+parameter = c(xs, list(objective = objective, search_space = search_space, budget_limit = 1000))
 
-do.call(opt_objective, parameter)
+tic()
+instance = do.call(opt_objective, parameter)
+toc()
