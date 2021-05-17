@@ -180,27 +180,29 @@ def main(args):
     max_SH_iter = -int(np.log(args.minbudget/args.maxbudget)/np.log(args.eta)) + 1
 
     # args = parser.parse_args(['--problem', 'nb301', '--tempdir', 'reg_temp/external/', '--task', 'NA', '--minbudget', '1', '--maxbudget', '52', '--eta', '3', '--fullbudget', '5000', '--alg', 'hb', '--objective', 'val_accuracy', '--objective_multiplier', '-1'])
-    result_logger = hpres.json_result_logger(directory=args.tempdir, overwrite=True)
+    # result_logger = hpres.json_result_logger(directory=args.tempdir, overwrite=True)
 
     total_budget_spent = 0
     res = None
 
+    NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None, working_directory=args.tempdir)
+    NS.start()
+    if args.problem == "nb301":
+        w = nb301(sleep_interval=0, objective = args.objective, objective_multiplier = args.objective_multiplier, nameserver='127.0.0.1',run_id='example1')
+    if args.problem == "lcbench":
+        w = lcbench(task = args.task, objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1',run_id='example1')
+    w.run(background=True)
+    if args.alg == "hb":
+        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
+    if args.alg == "bohb":
+        alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
+
     while total_budget_spent < args.fullbudget:
-        NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None, working_directory=args.tempdir)
-        NS.start()
-        if args.problem == "nb301":
-            w = nb301(sleep_interval=0, objective = args.objective, objective_multiplier = args.objective_multiplier, nameserver='127.0.0.1',run_id='example1')
-        if args.problem == "lcbench":
-            w = lcbench(task = args.task, objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1',run_id='example1')
-        w.run(background=True)
-        if args.alg == "hb":
-            alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res, result_logger=result_logger)
-        if args.alg == "bohb":
-            alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res, result_logger=result_logger)
         res = alg.run(n_iterations=max_SH_iter) # hand over number of brackets here
         total_budget_spent = compute_total_budget(res)
-        alg.shutdown(shutdown_workers = True)
-        NS.shutdown()        
+
+    alg.shutdown(shutdown_workers = True)
+    NS.shutdown()    
 
     with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
         pickle.dump(res, fh)  
