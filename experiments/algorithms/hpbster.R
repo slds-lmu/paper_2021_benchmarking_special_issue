@@ -11,15 +11,18 @@
 # ns = [max(int(n0*(self.eta**(-i))), 1) for i in range(s+1)] (Configs for the brackets: ni)
 
 
-# TODO: Check whether bohb/hb maximizes! --> Done, this works
+# TODO: Check whether bohb/hb maximizes! --> DONE, it minimizes. Always needs to be transformed
 # TODO: Get pandas data.frame does not give me the right thing! --> No, but I managed to do python logging
-# TODO: It seems that only the most exploratory bracket is returned
+# TODO: It seems that only the most exploratory bracket is returned --> Fixed, one has to set the n_iters to at least the number of brackets
 
-bohb = function(data, job, instance, eta) {
+hpbster = function(data, job, instance, eta, algorithm_type) {
 
 	ins = instance$ins$clone()
 	objective = ins$objective
 	search_space_old = ins$search_space
+
+	cid = objective$codomain$ids()
+	objective_multiplier = ifelse(objective$codomain$tags[[cid]] == "maximize", -1, 1)
 
 	param_ids = search_space_old$ids()
 
@@ -32,7 +35,7 @@ bohb = function(data, job, instance, eta) {
 	fullbudget = ins$terminator$param_set$values$budget
 
 	start_t = Sys.time()
-    system(paste0("python3 experiments/algorithms/bohb.py --problem ", instance$name, " --tempdir ", job$external.dir, " --task ", instance$task, " --minbudget ", budget_lower, " --maxbudget ", budget_upper, " --eta ",  eta, " --fullbudget ", fullbudget))
+    system(paste0("python3 experiments/algorithms/hpbster.py --alg ", algorithm_type, " --problem ", instance$name, " --tempdir ", job$external.dir, " --task ", instance$task, " --minbudget ", budget_lower, " --maxbudget ", budget_upper, " --eta ",  eta, " --fullbudget ", fullbudget, " --objective ", cid, " --objective_multiplier ", objective_multiplier))
 	end_t = Sys.time()
 
     return(list(runtime = end_t - start_t))

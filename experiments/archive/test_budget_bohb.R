@@ -108,8 +108,10 @@ max_SH_iter = - as.integer(log(budget_lower / budget_upper) / log(eta)) + 1
 budgets = budget_upper * eta^(- seq(max_SH_iter - 1, 0, length.out = max_SH_iter))
 
 # For five iterations:
-iteration = 0
-s = max_SH_iter - 1 - iteration
+iteration = 4
+s = max_SH_iter - 1 - iteration %% max_SH_iter
 # number of configurations in that bracket
 n0 = as.integer(floor((max_SH_iter)/(s+1)) * eta^s)
 ns = sapply(seq(0, s + 1), function(i) max(as.integer(n0 * eta^(-i)), 1))
+num_configs=ns
+budgets = budgets[(-s-1):1]
