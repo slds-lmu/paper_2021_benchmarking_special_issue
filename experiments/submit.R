@@ -40,8 +40,23 @@ updates = lapply(toupdate, function(jid) {
 
 
 
+# Submit to cluster
 
+resources.serial.default = list(
+  walltime = 3600L * 24L * 2L, memory = 1024L * 2L,
+  clusters = "serial", max.concurrent.jobs = 1000L # get name from lrz homepage)
+)
 
+# Load real registriy
+reg = loadRegistry("reg", writeable = TRUE)
+
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
+
+# Testing every version of algorithm / problem with full budget
+tosubmit_lcbench = tab[problem == "lcbench", ]
+tosubmit$chunk = chunk(tosubmit$job.id, chunk.size = 5)
+
+submitJobs(tosubmit[chunk == 1, ], resources = resources.serial.default)
 
 
 
@@ -51,7 +66,6 @@ tosubmit = tosubmit[algorithm == "bohb", ]
 
 # tosubmit = rbind(tosubmit[problem == "nb301", ], tosubmit[task == "189873", ])
 
-tosubmit$chunk = chunk(tosubmit$job.id, chunk.size = 5)
 
 
 
@@ -60,10 +74,6 @@ tosubmit$chunk = chunk(tosubmit$job.id, chunk.size = 5)
 
 # Visualize the outcome 
 
-resources.serial.default = list(
-  walltime = 3600L * 24L * 2L, memory = 1024L * 2L,
-  clusters = "serial", max.concurrent.jobs = 1000L # get name from lrz homepage)
-)
 
 
 library(batchtools)

@@ -18,8 +18,6 @@ from hpbandster.optimizers import HyperBand as HB
 import logging
 import pickle
 
-# PROBLEM: retrafo_predictions wird nicht exportiert 
-
 class nb301(Worker):
     def __init__(self, objective, objective_multiplier, *args, sleep_interval=0, **kwargs):
         super().__init__(*args, **kwargs)

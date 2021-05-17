@@ -27,7 +27,7 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate) {
 		surrogate = makeMlr3Surrogate(is.numeric = TRUE, is.noisy = TRUE, has.dependencies = FALSE) 
 	}
 
-	rc        = po("removeconstants")
+	rc = po("removeconstants")
 	learner_po = po("learner", learner = surrogate)
 	graph = rc %>>% learner_po
 	glrn = GraphLearner$new(graph)
