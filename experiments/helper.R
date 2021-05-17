@@ -39,14 +39,8 @@ readProblem = function(data, job, task, objectives, ...) {
     }
   }
 
-  # We give a total budget of lbmax * 100 * d
-  # Alternative: The maximum budget is the one that hyperband is given: 
-  BUDGET_MAX = compute_total_budget(budget_upper, budget_lower, 2)
-
-  # BUDGET_MAX = BUDGET_MAX_FACTOR * budget_upper * length(param_ids)
-
-  # Get the objective function
-  # For branin the interface is slghtly different 
+  # We give a total budget of lbmax * 30 * d
+  BUDGET_MAX = B_MULTIPLIER * length(param_ids) * budget_upper
 
   if (is.na(task)) {
     obj = data$get_objective(target_variables = objectives)   

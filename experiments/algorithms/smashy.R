@@ -6,6 +6,8 @@ smashy = function(data, job, instance) {
 
 	param_ids = search_space_old$ids()
 
+	cids = ins$objective$codomain$ids()
+
 	budget_idx = which(ins$search_space$tags %in% c("budget", "fidelity"))
 	budget_id = param_ids[budget_idx]
 	budget_lower = search_space_old$params[[budget_idx]]$lower
@@ -52,5 +54,10 @@ smashy = function(data, job, instance) {
 	optimizer$optimize(ins)
 	end_t = Sys.time()
 
-    return(list(archive = ins$archive$data, runtime = end_t - start_t))
+	# To make it uniform in the end we rename the budget
+	archive = ins$archive$data
+	names(archive)[which(names(archive) == budget_id)] = "budget"
+	names(archive)[which(names(archive) %in% cids)] = ifelse(length(cids) == 1, "performance", paste0("loss_", seq_len(length(length(cids)))))
+
+    return(list(archive = archive, runtime = end_t - start_t))
 }
