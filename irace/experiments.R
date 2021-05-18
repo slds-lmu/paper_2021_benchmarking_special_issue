@@ -5,6 +5,7 @@ set.seed(7345)
 
 # 18.05.2021
 # single-crit
+set.seed(7345)
 subfolder = "data_18_05_single_b3000"
 dir.create(file.path(folder,  subfolder))
 

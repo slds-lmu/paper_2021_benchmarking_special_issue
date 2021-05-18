@@ -183,7 +183,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
      private = list(
       .eval_many = function(xss) {
 
-        eval = function(xs, instance) {
+        eval = function(xs, instance, highest_budget_only) {
           # stop time for irace
           t0 = Sys.time()
           
@@ -216,36 +216,32 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
             search_space = search_space, .args = xs)
 
-          list(instance = instance, time = as.numeric(difftime(Sys.time(), t0, units = "secs")))
+          # get archive data and optionally filter for experiments with highest budget only
+          ydt = if (highest_budget_only) {
+              domain = instance$objective$domain
+              param_ids = domain$ids()
+              budget_idx = which(domain$tags %in% c("budget", "fidelity"))
+              budget_id = param_ids[budget_idx]
+              instance$archive$data[get(budget_id) == max(get(budget_id)), instance$archive$cols_y, with = FALSE]
+            } else {
+              instance$archive$data[, instance$archive$cols_y, with = FALSE]]
+            }
+
+          list(ydt = ydt, time = as.numeric(difftime(Sys.time(), t0, units = "secs")), objective_multiplicator = instance$objective_multiplicator * -1)
         }
 
         # call smashy with different configuration parameter in xss on one instance
-        res = future.apply::future_mapply(eval, xss, self$irace_instance, SIMPLIFY = FALSE, future.seed = 7345)
-
-        # get archive data and optionally filter for experiments with highest budget only
-        archives = map(res, function(r) {
-          inst = r$instance
-          if (highest_budget_only) {
-            domain = inst$objective$domain
-            param_ids = domain$ids()
-            budget_idx = which(domain$tags %in% c("budget", "fidelity"))
-            budget_id = param_ids[budget_idx]
-            inst$archive$data[get(budget_id) == max(get(budget_id)), ]
-          } else {
-            inst$archive$data
-          }
-        })
+        res = future.apply::future_mapply(eval, xss, self$irace_instance, highest_budget_only, SIMPLIFY = FALSE, future.seed = 7345)
 
         # nadir
-        objective_multiplicator = res[[1]]$instance$objective_multiplicator * -1
-        cols_y = res[[1]]$instance$archive$cols_y
-        ymat = as.matrix(map_dtr(archives, function(archive) archive[, cols_y, with = FALSE]))
+        objective_multiplicator = res[[1]]$objective_multiplicator
+        ymat = as.matrix(map_dtr(res, function(r) r$ydt)
         ymat = sweep(ymat, 2, objective_multiplicator, `*`)
         nadir = apply(ymat, 2, min)
 
         # hypervolume
-        hvs = map(archives, function(archive) {
-          mat = as.matrix(archive[, cols_y, with = FALSE])
+        hvs = map(res, function(r) {
+          mat = r$ydt(archive[, cols_y, with = FALSE])
           mat = sweep(mat, 2, objective_multiplicator, `*`)
           miesmuschel:::domhv(mat, nadir = nadir)
         })
