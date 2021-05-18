@@ -3,15 +3,22 @@ lgr::get_logger("bbotk")$set_threshold("warn")
 folder = "./irace/data"
 set.seed(7345)
 
-# 17.05.2021
-subfolder = "test_data_17_05_single_b3000"
+# 18.05.2021
+# single-crit
+subfolder = "data_18_05_single_b3000"
 dir.create(file.path(folder,  subfolder))
 
+# set instances
 instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("rbv2_super", "lcbench")]
+# set targets
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
-instances_plan = instances_plan[sample(nrow(instances_plan)), ]
+# set lower and upper bound of fidelity parameter
+instances_plan[,lower := ifelse(cfg == "lcbench", 1, 3^(-3))]
+instances_plan[,upper := ifelse(cfg == "lcbench", 52, 1)]
+instances_plan[,id_plan := 1:.N]
+instances_plan = instances_plan[sample(nrow(instances_plan)),] 
 
-#future::plan("multicore", workers = 40)
+future::plan("multicore", workers = 40)
 
 res = optimize_irace(
   instances_plan = instances_plan,
@@ -21,33 +28,21 @@ res = optimize_irace(
   log_file = file.path(folder, subfolder, "irace_log.Rdata"),
   workdir = "./irace/data/surrogates")
 
-# 17.05.2021
-# small_test
-subfolder = "test_data_17_05_single_b3000"
+# 18.05.2021
+# multi-crit
+set.seed(7345)
+subfolder = "data_18_05_multi_b3000"
 dir.create(file.path(folder,  subfolder))
 
+# set instances
 instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("rbv2_super", "lcbench")]
-instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
-instances_plan = instances_plan[c(9, 16), ]
-
-future::plan("multicore", workers = 40)
-
-res = optimize_irace(
-  instances_plan = instances_plan,
-  evals = 300,
-  highest_budget_only = TRUE,
-  instance_file = file.path(folder, subfolder, "irace_instance.rda"),
-  log_file = file.path(folder, subfolder, "irace_log.Rdata"),
-  workdir = "./irace/data/surrogates")
-
-# 17.05.2021
-# small_test_multi
-subfolder = "test_data_17_05_multi_b3000"
-dir.create(file.path(folder,  subfolder))
-
-instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("rbv2_super", "lcbench")]
+# set targets
 instances_plan[,targets := ifelse(cfg == "lcbench", list(c("val_cross_entropy", "time")), list(c("logloss", "timepredict")))]
-instances_plan = instances_plan[c(9, 16), ]
+# set lower and upper bound of fidelity parameter
+instances_plan[,lower := ifelse(cfg == "lcbench", 1, 3^(-3))]
+instances_plan[,upper := ifelse(cfg == "lcbench", 52, 1)]
+instances_plan[,id_plan := 1:.N]
+instances_plan = instances_plan[sample(nrow(instances_plan)), ]
 
 future::plan("multicore", workers = 40)
 

@@ -196,8 +196,8 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           param_ids = domain$ids()
           budget_idx = which(domain$tags %in% c("budget", "fidelity"))
           budget_id = param_ids[budget_idx]
-          budget_lower = domain$params[[budget_idx]]$lower
-          budget_upper = domain$params[[budget_idx]]$upper
+          budget_lower = instance$lower
+          budget_upper = instance$upper
           params_to_keep = param_ids[- budget_idx]
 
           search_space = ParamSet$new(domain$params[params_to_keep])
@@ -210,7 +210,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           }
 
           # calculate smashy budget
-          budget_limit = 10 #search_space$length * 30 * budget_upper
+          budget_limit = search_space$length * 30 * budget_upper
 
           # call smashy with configuration parameter in xs
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
@@ -220,7 +220,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
         }
 
         # call smashy with different configuration parameter in xss on one instance
-        res = future.apply::future_mapply(eval, xss, self$irace_instance, SIMPLIFY = FALSE)
+        res = future.apply::future_mapply(eval, xss, self$irace_instance, SIMPLIFY = FALSE, future.seed = 7345)
 
         # get archive data and optionally filter for experiments with highest budget only
         archives = map(res, function(r) {
@@ -251,7 +251,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
         })
 
         time = map(res, function(x) x$time)
-        data.table(y = hvs, time = time)
+        data.table(y = hvs, time = time, id_plan = self$irace_instance$id_plan)
       }
     )
   )
@@ -264,7 +264,7 @@ optimize_irace = function(instances_plan, evals = 300, highest_budget_only, inst
   assert_data_table(instances_plan)
   instances_plan = mlr3misc::transpose_list(instances_plan)
   irace_instance = makeIraceOI(evals, highest_budget_only, workdir)
-  optimizer_irace = opt("irace", instances = instances_plan, logFile = log_file)
+  optimizer_irace = opt("irace", instances = instances_plan, logFile = log_file, seed = 7345)
   optimizer_irace$optimize(irace_instance)
   saveRDS(irace_instance, instance_file)
   irace_instance
