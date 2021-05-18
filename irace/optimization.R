@@ -251,7 +251,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
         })
 
         time = map(res, function(x) x$time)
-        data.table(y = hvs, time = time, id_plan = self$irace_instance$id_plan)
+        data.table(y = unlist(hvs), time = unlist(time), id_plan = self$irace_instance$id_plan)
       }
     )
   )
