@@ -28,9 +28,9 @@ dir.create(file.path(folder,  subfolder))
 
 instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("rbv2_super", "lcbench")]
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
-instances_plan = instances_plan[sample(nrow(instances_plan)), ]
+instances_plan = instances_plan[c(9, 16), ]
 
-# future::plan("multicore", workers = 8)
+future::plan("multicore", workers = 40)
 
 res = optimize_irace(
   instances_plan = instances_plan,
@@ -47,7 +47,7 @@ dir.create(file.path(folder,  subfolder))
 
 instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("rbv2_super", "lcbench")]
 instances_plan[,targets := ifelse(cfg == "lcbench", list(c("val_cross_entropy", "time")), list(c("logloss", "timepredict")))]
-instances_plan = instances_plan[c(1, 9), ]
+instances_plan = instances_plan[c(9, 16), ]
 
 future::plan("multicore", workers = 40)
 

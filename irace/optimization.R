@@ -190,8 +190,8 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           # get surrogate model
           cfg = cfgs(instance$cfg, workdir = workdir)
           objective = cfg$get_objective(task = instance$level, target_variables = instance$targets)
+
           # create search space
-          if (instance$cfg == "rbv2_super") browser()
           domain = objective$domain
           param_ids = domain$ids()
           budget_idx = which(domain$tags %in% c("budget", "fidelity"))
