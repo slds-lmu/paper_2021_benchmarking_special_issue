@@ -224,7 +224,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
               budget_id = param_ids[budget_idx]
               instance$archive$data[get(budget_id) == max(get(budget_id)), instance$archive$cols_y, with = FALSE]
             } else {
-              instance$archive$data[, instance$archive$cols_y, with = FALSE]]
+              instance$archive$data[, instance$archive$cols_y, with = FALSE]
             }
 
           list(ydt = ydt, time = as.numeric(difftime(Sys.time(), t0, units = "secs")), objective_multiplicator = instance$objective_multiplicator * -1)
