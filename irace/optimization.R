@@ -235,7 +235,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
 
         # nadir
         objective_multiplicator = res[[1]]$objective_multiplicator
-        ymat = as.matrix(map_dtr(res, function(r) r$ydt)
+        ymat = as.matrix(map_dtr(res, function(r) r$ydt))
         ymat = sweep(ymat, 2, objective_multiplicator, `*`)
         nadir = apply(ymat, 2, min)
 
