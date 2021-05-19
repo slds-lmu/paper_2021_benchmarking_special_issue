@@ -18,11 +18,11 @@ instances_plan[,upper := ifelse(cfg == "lcbench", 52, 1)]
 instances_plan[,id_plan := 1:.N]
 instances_plan = instances_plan[sample(nrow(instances_plan)),] 
 
-future::plan("multicore", workers = 40)
+# future::plan("multicore", workers = 40)
 
 res = optimize_irace(
   instances_plan = instances_plan,
-  evals = 3000,
+  evals = 300,
   highest_budget_only = TRUE,
   instance_file = file.path(folder, subfolder, "irace_instance.rda"),
   log_file = file.path(folder, subfolder, "irace_log.Rdata"),
