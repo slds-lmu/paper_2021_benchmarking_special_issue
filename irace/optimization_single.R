@@ -210,7 +210,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           }
 
           # calculate smashy budget
-          budget_limit = search_space$length * 30 * budget_upper
+          budget_limit = 10 #search_space$length * 30 * budget_upper
 
           # call smashy with configuration parameter in xs
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
@@ -225,7 +225,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           } else {
             instance$archive$data
           }
-          setorderv(archive, instance$archive$cols_y, order = instance$objective_multiplicator, na.last = TRUE)[""]
+          setorderv(archive, instance$archive$cols_y, order = instance$objective_multiplicator, na.last = TRUE)
           y = as.numeric(archive[1, instance$archive$cols_y, with = FALSE]) * unname(instance$objective_multiplicator) * -1 # y is maximized
 
           c(y = y, time = as.numeric(difftime(Sys.time(), t0, units = "secs")))
