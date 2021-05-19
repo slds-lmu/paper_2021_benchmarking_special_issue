@@ -37,11 +37,11 @@ smash_it = function(mu) {
 
 
   workdir = "./irace/data/surrogates"
-  #cfg = cfgs("rbv2_super", workdir = workdir)
-  #objective = cfg$get_objective(task = "1040", target_variables = "logloss")
+  cfg = cfgs("rbv2_super", workdir = workdir)
+  objective = cfg$get_objective(task = "1040", target_variables = "logloss")
 
-  cfg = cfgs("lcbench", workdir = workdir)
-  objective = cfg$get_objective(task = "3945", target_variables = c("val_balanced_accuracy", "time"))
+  #cfg = cfgs("lcbench", workdir = workdir)
+  # objective = cfg$get_objective(task = "3945", target_variables = c("val_balanced_accuracy", "time"))
 
   # get search space
   domain = objective$domain
