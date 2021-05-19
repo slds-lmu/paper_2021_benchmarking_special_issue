@@ -210,7 +210,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           }
 
           # calculate smashy budget
-          budget_limit = 1 # search_space$length * 30 * budget_upper
+          budget_limit = search_space$length * 30 * budget_upper
 
           # call smashy with configuration parameter in xs
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
