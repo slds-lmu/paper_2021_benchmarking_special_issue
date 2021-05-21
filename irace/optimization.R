@@ -173,7 +173,7 @@ meta_domain = ps(
   random_interleave_random = p_lgl()
 )
 
-makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
+makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y = p_dbl(tags = "maximize")), workdir) {
   ObjectiveIrace = R6Class("ObjectiveIrace", inherit = bbotk::Objective,
     public = list(
       irace_instance = NULL,
@@ -210,7 +210,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
           }
 
           # calculate smashy budget
-          budget_limit = search_space$length * 30 * budget_upper
+          budget_limit = 1#search_space$length * 30 * budget_upper
 
           # call smashy with configuration parameter in xs
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
@@ -223,6 +223,9 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
 
           # filter for experiments with highest budget only
           if (highest_budget_only) instance$archive$data = instance$archive$data[get(budget_id) == max(get(budget_id)), ]
+
+          # apply target_trafo
+          if (!is.null(irace_instance$target_trafo)) instance$archive$data = irace_instance$target_trafo(instance$archive$data)
         
           y = if (instance$objective$codomain$length > 1) {
             # hypervolume
@@ -245,7 +248,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, workdir) {
     )
   )
 
-  irace_objective = ObjectiveIrace$new(domain = meta_domain, codomain = ps(y = p_dbl(tags = "maximize")))
+  irace_objective = ObjectiveIrace$new(domain = meta_domain, codomain = codomain)
   OptimInstanceSingleCrit$new(objective = irace_objective, search_space = meta_search_space, terminator = trm("evals", n_evals = evals))
 }
 
