@@ -10,7 +10,7 @@ subfolder = "test_data_21_05_single_b3000"
 dir.create(file.path(folder,  subfolder))
 
 # set instances
-instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("rbv2_super", "lcbench")]
+instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("lcbench")] # "rbv2_super", 
 # set targets
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
 # set lower and upper bound of fidelity parameter

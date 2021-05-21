@@ -252,10 +252,10 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y 
   OptimInstanceSingleCrit$new(objective = irace_objective, search_space = meta_search_space, terminator = trm("evals", n_evals = evals))
 }
 
-optimize_irace = function(instances_plan, evals = 300, highest_budget_only, instance_file, log_file, workdir) {
+optimize_irace = function(instances_plan, evals = 300, highest_budget_only, instance_file, log_file, codomain, workdir) {
   assert_data_table(instances_plan)
   instances_plan = mlr3misc::transpose_list(instances_plan)
-  irace_instance = makeIraceOI(evals, highest_budget_only, workdir)
+  irace_instance = makeIraceOI(evals, highest_budget_only, codomain, workdir)
   optimizer_irace = opt("irace", instances = instances_plan, logFile = log_file, seed = 7345)
   optimizer_irace$optimize(irace_instance)
   saveRDS(irace_instance, instance_file)
