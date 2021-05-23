@@ -6,6 +6,7 @@ library(R6)
 library(data.table)
 library(mlr3learners)
 library(checkmate)
+library(mlr3misc)
 
 # for simulated annealing
 get_progress = function(inst) {
@@ -124,43 +125,6 @@ opt_objective = function(objective, search_space, budget_limit, budget_log_step,
   oi
 }
 
-opt_objective_optimizable = function(objective, test_objective, search_space, ...,      highest_budget_only, nadir = 0) {
-
-  assert_flag(highest_budget_only)
-
-  multiobjective = objective$codomain$length > 1
-
-  oi = opt_objective(objective, search_space, ...)
-
-  om = oi$objective_multiplicator
-
-  archdata = oi$archive$data
-  budgetparam = oi$search_space$ids(tags = "budget")
-  if (highest_budget_only) {
-    archdata = archdata[get(budgetparam) == max(get(budgetparam))]
-  }
-
-  objvalues = archdata[, names(om), with = FALSE]
-  objmat = as.matrix(sweep(objvalues, 2, om, `*`)) * -1
-
-  ndo = miesmuschel::order_nondominated(objmat)$fronts
-  selarch = ndo == 1
-
-  if (!multiobjective) {
-    selarch = which(selarch)[[1]]
-  }
-
-  design = archdata[selarch, x_domain]
-
-  fitnesses = as.matrix(sweep(test_objective$eval_many(design)[, test_objective$codomain$ids(), with = FALSE], 2, om, `*`)) * -1
-
-  if (multiobjective) {
-    miesmuschel:::domhv(fitnesses, nadir = nadir)
-  } else {
-    fitnesses
-  }
-}
-
 # smashy configuration parameter search space
 meta_search_space = ps(
   budget_log_step = p_dbl(log(2) / 4, log(2) * 4, logscale = TRUE),
@@ -209,8 +173,7 @@ meta_domain = ps(
   random_interleave_random = p_lgl()
 )
 
-makeIraceOI = function(evals = 300) {
-
+makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y = p_dbl(tags = "maximize")), workdir) {
   ObjectiveIrace = R6Class("ObjectiveIrace", inherit = bbotk::Objective,
     public = list(
       irace_instance = NULL,
@@ -220,31 +183,25 @@ makeIraceOI = function(evals = 300) {
      private = list(
       .eval_many = function(xss) {
 
-        eval = function(xs, instance) {
+        eval = function(xs, irace_instance) {
+          # stop time for irace
           t0 = Sys.time()
+          
+          # get surrogate model
+          cfg = cfgs(irace_instance$cfg, workdir = workdir)
+          objective = cfg$get_objective(task = irace_instance$level, target_variables = irace_instance$targets)
 
-          workdir = "./irace/data/surrogates"
-          cfg = cfgs(instance$cfg, workdir = workdir)
-
-          objective = cfg$get_objective(task = instance$level, target_variables = instance$targets)
-          test_objective = objective
-          highest_budget_only = TRUE
-          nadir = vapply(objective$codomain$tags, function(x) ifelse("minimize" %in% x, 1, 0), 0)
-
+          # create search space
           domain = objective$domain
           param_ids = domain$ids()
           budget_idx = which(domain$tags %in% c("budget", "fidelity"))
           budget_id = param_ids[budget_idx]
-          budget_lower = domain$params[[budget_idx]]$lower
-          budget_upper = domain$params[[budget_idx]]$upper
-          if (instance$cfg == "rbv2_super") budget_lower = 3^(-3)
-          
+          budget_lower = irace_instance$lower
+          budget_upper = irace_instance$upper
           params_to_keep = param_ids[- budget_idx]
 
-          # Get all parameters except the budget parameter 
           search_space = ParamSet$new(domain$params[params_to_keep])
           search_space$add(ParamDbl$new(id = budget_id, lower = log(budget_lower), upper = log(budget_upper), tags = "budget"))
-
           domain_tafo = domain$trafo
           search_space$trafo = function(x, param_set) {
             if (!is.null(domain_tafo)) x = domain_tafo(x, param_set)
@@ -252,31 +209,54 @@ makeIraceOI = function(evals = 300) {
             x
           }
 
-          budget_limit = search_space$length * 30 * budget_upper
+          # calculate smashy budget
+          budget_limit = 1#search_space$length * 30 * budget_upper
 
-          performance = mlr3misc::invoke(opt_objective_optimizable, objective = objective, 
-            test_objective = test_objective, budget_limit = budget_limit, search_space = search_space, 
-            highest_budget_only = highest_budget_only, nadir = nadir, .args = xs)
-          time = as.numeric(difftime(Sys.time(), t0, units = "secs"))
-          c(y = performance, time = time)
+          # call smashy with configuration parameter in xs
+          instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
+            search_space = search_space, .args = xs)
+
+          cols_y = instance$archive$cols_y
+
+          # the objective is maximized
+          objective_multiplicator = unname(instance$objective_multiplicator) * -1
+
+          # filter for experiments with highest budget only
+          if (highest_budget_only) instance$archive$data = instance$archive$data[get(budget_id) == max(get(budget_id)), ]
+
+          # apply target_trafo
+          if (!is.null(irace_instance$target_trafo)) instance$archive$data = irace_instance$target_trafo(instance$archive$data)
+        
+          y = if (instance$objective$codomain$length > 1) {
+            # hypervolume
+            mat = as.matrix(instance$archive$data[, cols_y, with = FALSE])
+            mat = sweep(mat, 2, objective_multiplicator, `*`)
+            miesmuschel:::domhv(mat, nadir = irace_instance$nadir * objective_multiplicator) 
+          } else {
+            # best performance
+            as.numeric(instance$archive$best()[, cols_y, with = FALSE]) * objective_multiplicator
+          }
+
+          list(y = y, time = as.numeric(difftime(Sys.time(), t0, units = "secs")))
         }
-     
-        res = future.apply::future_mapply(eval, xss, self$irace_instance)
-        tab = as.data.table(t(res))
+
+        # call smashy with different configuration parameter in xss on one instance
+        res = future.apply::future_mapply(eval, xss, self$irace_instance, SIMPLIFY = TRUE, future.seed = 7345)
+
+        data.table(y = unlist(res["y", ]), time = unlist(res["time", ]), id_plan = self$irace_instance[[1]]$id_plan)
       }
     )
   )
 
-  irace_objective = ObjectiveIrace$new(domain = meta_domain, codomain = ps(y = p_dbl(tags = "maximize")))
-
+  irace_objective = ObjectiveIrace$new(domain = meta_domain, codomain = codomain)
   OptimInstanceSingleCrit$new(objective = irace_objective, search_space = meta_search_space, terminator = trm("evals", n_evals = evals))
 }
 
-optimize_irace = function(instances_plan, evals = 300, instance_file, log_file) {
+optimize_irace = function(instances_plan, evals = 300, highest_budget_only, instance_file, log_file, codomain, workdir) {
   assert_data_table(instances_plan)
   instances_plan = mlr3misc::transpose_list(instances_plan)
-  irace_instance = makeIraceOI(evals)
-  optimizer_irace = opt("irace", instances = instances_plan, logFile = log_file)
+  irace_instance = makeIraceOI(evals, highest_budget_only, codomain, workdir)
+  optimizer_irace = opt("irace", instances = instances_plan, logFile = log_file, seed = 7345)
   optimizer_irace$optimize(irace_instance)
   saveRDS(irace_instance, instance_file)
   irace_instance
