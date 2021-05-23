@@ -17,6 +17,7 @@ from hpbandster.optimizers import BOHB as BOHB
 from hpbandster.optimizers import HyperBand as HB
 import logging
 import pickle
+from random import randrange
 
 class nb301(Worker):
     def __init__(self, objective, objective_multiplier, *args, sleep_interval=0, **kwargs):
@@ -184,8 +185,10 @@ def main(args):
 
     total_budget_spent = 0
     res = None
-
-    NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None, working_directory=args.tempdir)
+    # Bei ports randomisieren 
+    # Sample between 49152 und 65535
+    randport = randrange(49152, 65535 + 1)
+    NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=randport, working_directory=args.tempdir)
     NS.start()
     if args.problem == "nb301":
         w = nb301(sleep_interval=0, objective = args.objective, objective_multiplier = args.objective_multiplier, nameserver='127.0.0.1',run_id='example1')
