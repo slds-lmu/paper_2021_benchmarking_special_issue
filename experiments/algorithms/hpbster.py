@@ -17,6 +17,7 @@ from hpbandster.optimizers import BOHB as BOHB
 from hpbandster.optimizers import HyperBand as HB
 import logging
 import pickle
+import random
 
 class nb301(Worker):
     def __init__(self, objective, objective_multiplier, *args, sleep_interval=0, **kwargs):
@@ -185,17 +186,19 @@ def main(args):
     total_budget_spent = 0
     res = None
     # Bei ports randomisieren 
-    NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=0, working_directory=args.tempdir)
+    randport = random.randrange(49152, 65535 + 1)
+    
+    NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=randport, working_directory=args.tempdir)
     NS.start()
     if args.problem == "nb301":
-        w = nb301(sleep_interval=0, objective = args.objective, objective_multiplier = args.objective_multiplier, nameserver='127.0.0.1',run_id='example1')
+        w = nb301(sleep_interval=0, objective = args.objective, objective_multiplier = args.objective_multiplier, nameserver='127.0.0.1', nameserver_port = randport, run_id='example1')
     if args.problem == "lcbench":
-        w = lcbench(task = args.task, objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1',run_id='example1')
+        w = lcbench(task = args.task, objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1', nameserver_port = randport, run_id='example1')
     w.run(background=True)
     if args.alg == "hb":
-        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
+        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
     if args.alg == "bohb":
-        alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
+        alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
 
     while total_budget_spent < args.fullbudget:
         res = alg.run(n_iterations=max_SH_iter) # hand over number of brackets here

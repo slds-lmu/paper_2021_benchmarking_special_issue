@@ -40,8 +40,7 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
     	" --task ", instance$task, " --minbudget ", budget_lower, 
     	" --maxbudget ", budget_upper, " --eta ",  eta, 
     	" --fullbudget ", fullbudget, " --objective ", cid, 
-    	" --objective_multiplier ", objective_multiplier), 
-    stderr = paste0(job$external.dir, "/err.txt"))
+    	" --objective_multiplier ", objective_multiplier))
 	end_t = Sys.time()
 
 	if (out != 0)
