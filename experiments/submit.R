@@ -56,7 +56,7 @@ submitJobs(tosubmit, resources = resources.serial.default)
 
 
 # No batches for hpbster, this does not work!!! 
-tosubmit_hpbster = tosubmit[algorithm == "hpbster", ]
+tosubmit_hpbster = tosubmit[algorithm_type == "bohb", ]
 
 submitJobs(findExpired(), resources = resources.serial.default)
 
@@ -84,7 +84,7 @@ resubmit = out[which(!records.exist), ]
 
 resubmit$chunk = chunk(resubmit$job.id, chunk.size = 120)
 
-submitJobs(5521, resources = resources.serial.default)
+submitJobs(resubmit[chunk %in% 1:2, ], resources = resources.serial.default)
 
 
 
@@ -193,6 +193,28 @@ res = ijoin(tab, res)
 
 toupdate = res[which(res$algorithm_type %in% c("bohb", "hb")), ]$job.id
 
+
+
+
+
+for (tsk in tasks) {
+
+	out = lapply(algos, function(algo) 	readRDS(file.path(path, prob, tsk, paste0(algo, ".rds"))))
+	df = lapply(out, function(x) {
+		if (any(names(x) == "V2")) {
+			names(x)[which(names(x) == "V2")] == "result"
+		}
+		outn = lapply(1:nrow(x), function(i) {
+			mm = cbind(x[i, - c("result")], x[i, c("result")]$result[[1]])
+			mm$budget_cum = cumsum(mm$budget)
+			mm
+		})
+		do.call(rbind, outn)
+	})
+	df = do.call(rbind, df)
+
+	saveRDS(df, file.path(path, prob, tsk, paste0("result_sum.rds")))
+}
 
 
 

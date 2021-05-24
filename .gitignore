@@ -5,8 +5,11 @@ tmp*
 *rds
 *onnx
 
+*notes.txt
+experiments/results/
 experiments/problems/
 
 .Rhistory
 
 irace/data*
+
