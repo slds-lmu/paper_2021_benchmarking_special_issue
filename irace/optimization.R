@@ -1,5 +1,4 @@
-#library(bbotk) # @irace
-devtools::load_all("../bbotk")
+library(bbotk) # @irace
 library(miesmuschel) # @multiobjective_hb
 library(paradox) # @expression_params
 library(mfsurrogates)
