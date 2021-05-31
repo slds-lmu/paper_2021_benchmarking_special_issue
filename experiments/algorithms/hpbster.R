@@ -35,8 +35,16 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
 	fullbudget = ins$terminator$param_set$values$budget
 
 	start_t = Sys.time()
-    system(paste0("python3 experiments/algorithms/hpbster.py --alg ", algorithm_type, " --problem ", instance$name, " --tempdir ", job$external.dir, " --task ", instance$task, " --minbudget ", budget_lower, " --maxbudget ", budget_upper, " --eta ",  eta, " --fullbudget ", fullbudget, " --objective ", cid, " --objective_multiplier ", objective_multiplier))
+    out = system2('python3', c("experiments/algorithms/hpbster.py",  "--alg", algorithm_type, 
+    	" --problem ", instance$name, " --tempdir ", job$external.dir, 
+    	" --task ", instance$task, " --minbudget ", budget_lower, 
+    	" --maxbudget ", budget_upper, " --eta ",  eta, 
+    	" --fullbudget ", fullbudget, " --objective ", cid, 
+    	" --objective_multiplier ", objective_multiplier))
 	end_t = Sys.time()
+
+	if (out != 0)
+		stop("Error in execution of hpbandster.")
 
     return(list(runtime = end_t - start_t))
 }
