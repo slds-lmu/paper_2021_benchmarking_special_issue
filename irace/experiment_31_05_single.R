@@ -12,7 +12,7 @@ subfolder = "data_31_05_single"
 dir.create(file.path(folder,  subfolder))
 
 # set instances
-instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("lcbench")] # , "rbv2_super"
+instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("lcbench", "rbv2_super")]
 # set targets
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
 # set lower and upper bound of fidelity parameter
@@ -26,16 +26,16 @@ instances_plan[,id_plan := 1:.N]
 instances_plan = instances_plan[sample(nrow(instances_plan)),] 
 
 # download latest files
-# lapply(unique(instances_plan$cfg), function(id) {
-#  cfg = cfgs(id, workdir = workdir)
-#  cfg$setup(force = TRUE)
-# })
+lapply(unique(instances_plan$cfg), function(id) {
+  cfg = cfgs(id, workdir = workdir)
+  cfg$setup(force = TRUE)
+})
 
-#future::plan("multicore", workers = 40)
+future::plan("multicore", workers = 40)
 
 res = optimize_irace(
   instances_plan = instances_plan,
-  evals = 300,
+  evals = 3000,
   highest_budget_only = TRUE,
   instance_file = file.path(folder, subfolder, "irace_instance.rda"),
   log_file = file.path(folder, subfolder, "irace_log.Rdata"),

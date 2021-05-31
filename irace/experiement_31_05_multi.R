@@ -34,11 +34,17 @@ instances_plan[,upper := 1]
 instances_plan[,id_plan := 1:.N]
 instances_plan = instances_plan[sample(nrow(instances_plan)), ]
 
-#future::plan("multicore", workers = 40)
+# download latest files
+lapply(unique(instances_plan$cfg), function(id) {
+  cfg = cfgs(id, workdir = workdir)
+  cfg$setup(force = TRUE)
+})
+
+future::plan("multicore", workers = 40)
 
 res = optimize_irace(
   instances_plan = instances_plan,
-  evals = 300,
+  evals = 3000,
   highest_budget_only = TRUE,
   instance_file = file.path(folder, subfolder, "irace_instance.rda"),
   log_file = file.path(folder, subfolder, "irace_log.Rdata"),
