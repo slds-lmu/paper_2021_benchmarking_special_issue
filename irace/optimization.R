@@ -126,14 +126,12 @@ opt_objective = function(objective, search_space, budget_limit, budget_log_step,
   oi
 }
 
-
-
 # impute missing values due to dependencies
 imputepl = po("imputeoor", offset = 1, multiplier = 10) %>>% po("fixfactors") %>>% po("imputesample")
 learners = list(
   ranger = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.ranger", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
   knn = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
-)
+ )
 learners = lapply(learners, function(x) { class(x) <- c("LearnerRegr", class(x)) ; x })
 
 # smashy configuration parameter search space
@@ -217,9 +215,10 @@ makeIraceOI = function(evals = 3000, highest_budget_only = TRUE, codomain = ps(y
             x[budget_id] = if (domain$params[[budget_id]]$class == "ParamInt") as.integer(exp(x[[budget_id]])) else exp(x[[budget_id]])
             x
           }
+          search_space$deps = domain$deps
 
           # calculate smashy budget
-          budget_limit = 1 #search_space$length * 30 * budget_upper
+          budget_limit = search_space$length * 30 * budget_upper
 
           # call smashy with configuration parameter in xs
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
@@ -235,7 +234,7 @@ makeIraceOI = function(evals = 3000, highest_budget_only = TRUE, codomain = ps(y
 
           # apply target_trafo
           if (!is.null(irace_instance$target_trafo)) instance$archive$data = irace_instance$target_trafo(instance$archive$data)
-        
+
           y = if (instance$objective$codomain$length > 1) {
             # hypervolume
             mat = as.matrix(instance$archive$data[, cols_y, with = FALSE])

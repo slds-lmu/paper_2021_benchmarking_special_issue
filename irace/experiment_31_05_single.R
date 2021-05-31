@@ -3,7 +3,6 @@
 # filter_factor_* to 1000
 # use graph learners which imputes missing values in smashy 
 
-
 set.seed(7345)
 source("./irace/optimization.R")
 lgr::get_logger("bbotk")$set_threshold("warn")
@@ -13,23 +12,26 @@ subfolder = "data_31_05_single"
 dir.create(file.path(folder,  subfolder))
 
 # set instances
-instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("lcbench", "rbv2_super")]
+instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg %in% c("lcbench")] # , "rbv2_super"
 # set targets
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
 # set lower and upper bound of fidelity parameter
 instances_plan[,lower := ifelse(cfg == "lcbench", 1, 3^(-3))]
 instances_plan[,upper := ifelse(cfg == "lcbench", 52, 1)]
+# set nadir
+instances_plan[, nadir := 1]
+
 # set instance id and shuffle
 instances_plan[,id_plan := 1:.N]
 instances_plan = instances_plan[sample(nrow(instances_plan)),] 
 
 # download latest files
-lapply(unique(instances_plan$cfg), function(id) {
-  cfg = cfgs(id, workdir = workdir)
-  cfg$setup(force = TRUE)
-})
+# lapply(unique(instances_plan$cfg), function(id) {
+#  cfg = cfgs(id, workdir = workdir)
+#  cfg$setup(force = TRUE)
+# })
 
-future::plan("multicore", workers = 40)
+#future::plan("multicore", workers = 40)
 
 res = optimize_irace(
   instances_plan = instances_plan,
