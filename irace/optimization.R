@@ -251,7 +251,6 @@ makeIraceOI = function(evals = 3000, highest_budget_only = TRUE, codomain = ps(y
 
         # call smashy with different configuration parameter in xss on one instance
         res = future.apply::future_mapply(eval, xss, self$irace_instance, SIMPLIFY = TRUE, future.seed = 7345)
-          browser()
         data.table(y = unlist(res["y", ]), time = unlist(res["time", ]), id_plan = self$irace_instance[[1]]$id_plan)
       }
     )
