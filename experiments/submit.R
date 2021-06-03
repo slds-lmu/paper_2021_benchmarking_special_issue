@@ -31,7 +31,7 @@ submitJobs(tosubmit_rs, resources = resources.serial.default)
 # Time (full budget = TRUE): 	20 min
 # Time (full_budget = FALSE): 	34 min
 tosubmit_mbo = tosubmit[algorithm == "mlrintermbo", ]
-tosubmit_mbo$chunk = chunk(tosubmit_mbo$job.id, chunk.size = 40)
+tosubmit_mbo$chunk = chunk(tosubmit_mbo$job.id, chunk.size = 96)
 
 submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
@@ -39,7 +39,7 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 # 3. BOBH
 # Time: ~ less than a minute 
 tosubmit_hpbster = tosubmit[algorithm_type == "bohb", ]
-tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 100)
+tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 600)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 

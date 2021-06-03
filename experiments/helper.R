@@ -51,7 +51,7 @@ readProblem = function(data, job, task, objectives, ...) {
   if (nobjectives == 1) {
     ins = OptimInstanceSingleCrit$new(
       objective = obj,
-      terminator = trm("budget", budget = 50, aggregate = sum) 
+      terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
     )
   } 
 
