@@ -2,6 +2,7 @@ library(bbotk) # @irace
 library(miesmuschel) # @multiobjective_hb
 library(paradox) # @expression_params
 library(mfsurrogates)
+library(mlr3pipelines)
 library(R6)
 library(data.table)
 library(mlr3learners)
@@ -125,6 +126,14 @@ opt_objective = function(objective, search_space, budget_limit, budget_log_step,
   oi
 }
 
+# impute missing values due to dependencies
+imputepl = po("imputeoor", offset = 1, multiplier = 10) %>>% po("fixfactors") %>>% po("imputesample")
+learners = list(
+  ranger = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.ranger", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
+  knn = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
+ )
+learners = lapply(learners, function(x) { class(x) <- c("LearnerRegr", class(x)) ; x })
+
 # smashy configuration parameter search space
 meta_search_space = ps(
   budget_log_step = p_dbl(log(2) / 4, log(2) * 4, logscale = TRUE),
@@ -132,18 +141,16 @@ meta_search_space = ps(
   sample = p_fct(c("random")),
   survival_fraction = p_dbl(0, 1),
   filter_algorithm = p_fct(c("tournament", "progressive")),
-  surrogate_learner = p_fct(list(
-    ranger = mlr3::lrn("regr.ranger"),
-    knn = mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))),
+  surrogate_learner = p_fct(learners),
   filter_with_max_budget = p_lgl(),
 
-  filter_factor_first = p_dbl(1, 100, logscale = TRUE),
-  filter_factor_last = p_dbl(1, 100, logscale = TRUE),
+  filter_factor_first = p_dbl(1, 1000, logscale = TRUE),
+  filter_factor_last = p_dbl(1, 1000, logscale = TRUE),
   filter_select_per_tournament = p_int(1, 10, logscale = TRUE),
   random_interleave_fraction = p_dbl(0, 1),
 
-  filter_factor_first.end = p_dbl(1, 100, logscale = TRUE),
-  filter_factor_last.end = p_dbl(1, 100, logscale = TRUE),
+  filter_factor_first.end = p_dbl(1, 1000, logscale = TRUE),
+  filter_factor_last.end = p_dbl(1, 1000, logscale = TRUE),
   filter_select_per_tournament.end = p_int(1, 10, logscale = TRUE),
   random_interleave_fraction.end = p_dbl(0, 1),
 
@@ -173,7 +180,7 @@ meta_domain = ps(
   random_interleave_random = p_lgl()
 )
 
-makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y = p_dbl(tags = "maximize")), workdir) {
+makeIraceOI = function(evals = 3000, highest_budget_only = TRUE, codomain = ps(y = p_dbl(tags = "maximize")), workdir) {
   ObjectiveIrace = R6Class("ObjectiveIrace", inherit = bbotk::Objective,
     public = list(
       irace_instance = NULL,
@@ -208,9 +215,10 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y 
             x[budget_id] = if (domain$params[[budget_id]]$class == "ParamInt") as.integer(exp(x[[budget_id]])) else exp(x[[budget_id]])
             x
           }
+          search_space$deps = domain$deps
 
           # calculate smashy budget
-          budget_limit = 1#search_space$length * 30 * budget_upper
+          budget_limit = search_space$length * 30 * budget_upper
 
           # call smashy with configuration parameter in xs
           instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
@@ -226,7 +234,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y 
 
           # apply target_trafo
           if (!is.null(irace_instance$target_trafo)) instance$archive$data = irace_instance$target_trafo(instance$archive$data)
-        
+
           y = if (instance$objective$codomain$length > 1) {
             # hypervolume
             mat = as.matrix(instance$archive$data[, cols_y, with = FALSE])
@@ -242,7 +250,6 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y 
 
         # call smashy with different configuration parameter in xss on one instance
         res = future.apply::future_mapply(eval, xss, self$irace_instance, SIMPLIFY = TRUE, future.seed = 7345)
-
         data.table(y = unlist(res["y", ]), time = unlist(res["time", ]), id_plan = self$irace_instance[[1]]$id_plan)
       }
     )
@@ -252,7 +259,7 @@ makeIraceOI = function(evals = 300, highest_budget_only = TRUE, codomain = ps(y 
   OptimInstanceSingleCrit$new(objective = irace_objective, search_space = meta_search_space, terminator = trm("evals", n_evals = evals))
 }
 
-optimize_irace = function(instances_plan, evals = 300, highest_budget_only, instance_file, log_file, codomain, workdir) {
+optimize_irace = function(instances_plan, evals = 3000, highest_budget_only, instance_file, log_file, codomain, workdir) {
   assert_data_table(instances_plan)
   instances_plan = mlr3misc::transpose_list(instances_plan)
   irace_instance = makeIraceOI(evals, highest_budget_only, codomain, workdir)
