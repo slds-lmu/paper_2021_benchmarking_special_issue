@@ -9,7 +9,7 @@ resources.serial.default = list(
 # Load real registry
 reg = loadRegistry("reg", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point"),)
 
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
@@ -22,7 +22,7 @@ tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 # 1. RANDOMSERACH 
 # Time: ~ less than a minute
 tosubmit_rs = tosubmit[algorithm == "randomsearch", ]
-tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 100)
+tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 1050)
 
 submitJobs(tosubmit_rs, resources = resources.serial.default)
 

@@ -66,7 +66,10 @@ options(timeout=60^2) # set very high timeout to make sure everything is downloa
 surr_data = lapply(surrogates, function(surr) {
 	
 	cfg = cfgs(surr, workdir = SURROGATE_LOCATION)
-	cfg$setup(force = TRUE)
+	cfg$setup(force = FALSE)
+
+	# Store codomain manually for the python scripts
+	saveRDS(cfg$codomain, file.path(SURROGATE_LOCATION, surr, "codomain.rds"))
 
 	return(cfg)
 })
