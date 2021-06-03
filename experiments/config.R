@@ -66,7 +66,7 @@ options(timeout=60^2) # set very high timeout to make sure everything is downloa
 surr_data = lapply(surrogates, function(surr) {
 	
 	cfg = cfgs(surr, workdir = SURROGATE_LOCATION)
-	cfg$setup()
+	cfg$setup(force = TRUE)
 
 	return(cfg)
 })
@@ -75,7 +75,7 @@ names(surr_data) = surrogates
 
 # TODO: Optimize cross entropy for nb301? 
 pdes = list(nb301 = data.table(objectives = c("val_accuracy")), 
-			lcbench = data.table(objectives = c("val_cross_entropy")), 
+			lcbench = data.table(objectives = c("val_accuracy")), 
 			rbv2_super = data.table(objectives = c("logloss"))
 			)
 
@@ -101,13 +101,12 @@ pdes = lapply(names(pdes), function(pid) {
 names(pdes) = surrogates
 
 
-
 # --- 2. ALGORITHM DESIGN ---
 
 ALGORITHMS = list(
     randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), 
-    mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE), surrogate = "regr.randomForest")), 
+    mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE, FALSE, TRUE), multi.point = c(1L, 1L, 32L, 32L))), 
     # smashy = list(fun = smashy, ades = data.table()), 
     hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb")))
 )

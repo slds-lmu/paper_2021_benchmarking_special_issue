@@ -39,8 +39,8 @@ readProblem = function(data, job, task, objectives, ...) {
     }
   }
 
-  # We give a total budget of lbmax * 30 * d
-  BUDGET_MAX = B_MULTIPLIER * length(param_ids) * budget_upper
+  # We give a total budget of lbmax * 30 * d * PARALLELIZATION_MAX 
+  BUDGET_MAX = B_MULTIPLIER * length(param_ids) * budget_upper * 32
 
   if (is.na(task)) {
     obj = data$get_objective(target_variables = objectives)   
@@ -51,7 +51,7 @@ readProblem = function(data, job, task, objectives, ...) {
   if (nobjectives == 1) {
     ins = OptimInstanceSingleCrit$new(
       objective = obj,
-      terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
+      terminator = trm("budget", budget = 50, aggregate = sum) 
     )
   } 
 
