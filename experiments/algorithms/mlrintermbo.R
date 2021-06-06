@@ -1,6 +1,11 @@
-mlrintermbo = function(data, job, instance, full_budget, surrogate) {
+mlrintermbo = function(data, job, instance, full_budget, surrogate, multi.point) {
 
 	ins = instance$ins
+
+	# If no simple sequential BO is performed, we limit the number of evaluations
+	if (multi.point == 1L) {
+		ins$terminator$param_set$values$budget = ins$terminator$param_set$values$budget / 32L
+	}
 
 	budget_idx = which(ins$search_space$tags %in% c("budget", "fidelity"))
 	budget_id = ins$search_space$ids()[budget_idx]
@@ -17,21 +22,10 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate) {
 
 	optimizer = OptimizerInterMBO$new()
 	
-	# Check whether the search space is numeric to choose the surrogate
-	cls = ins$search_space$class
-	is_mixed = any(!cls %in% c("ParamDbl", "ParamInt"))
 
-	if (is_mixed) {
-		surrogate = makeMlr3Surrogate(is.numeric = FALSE, is.noisy = TRUE, has.dependencies = TRUE) 
-	} else {
-		surrogate = makeMlr3Surrogate(is.numeric = TRUE, is.noisy = TRUE, has.dependencies = FALSE) 
+	if (instance$name == "nb301") {
+
 	}
-
-	rc = po("removeconstants")
-	learner_po = po("learner", learner = surrogate)
-	graph = rc %>>% learner_po
-	glrn = GraphLearner$new(graph)
-	optimizer$param_set$values = list(surrogate.learner = glrn)				
 
 	start_t = Sys.time()
 	optimizer$optimize(ins)

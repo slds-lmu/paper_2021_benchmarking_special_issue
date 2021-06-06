@@ -29,6 +29,8 @@ class nb301(Worker):
         self.mfsurrogates = importr("mfsurrogates")
         self.session = onnxruntime.InferenceSession("experiments/problems/nb301/model.onnx")
         self.param_set = base.readRDS("experiments/problems/nb301/param_set.rds")
+        self.codomain = base.readRDS("experiments/problems/nb301/codomain.rds")  # FIXME: download manually from lrz or create from cfg
+        self.data_order = base.readRDS("experiments/problems/nb301/data_order.rds")
         self.trafo_dict = base.readRDS("experiments/problems/nb301/dicts.rds")
         self.multiplier = objective_multiplier
         self.target_names = ["val_accuracy", "runtime"]
@@ -46,11 +48,11 @@ class nb301(Worker):
         config.update({"epoch": int(budget)})  # FIXME: budget trafo to match epoch range and int
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
-        li_ = self.mfsurrogates.convert_for_onnx(xdt, param_set = self.param_set, trafo_dict = self.trafo_dict)
+        li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)  
         li = { key : li_.rx2(key) for key in li_.names }
         li["continuous"] = np.atleast_2d(li["continuous"]).astype("float32")
         res_ = self.session.run(None, li)[0]
-        res_ = self.mfsurrogates.retrafo_predictions(res_, target_names = self.target_names, trafo_dict = self.trafo_dict)        
+        res_ = self.mfsurrogates.retrafo_predictions(res_, target_names = self.target_names, codomain = self.codomain, trafo_dict = self.trafo_dict)        
         res =  { key : res_[key] for key in res_.keys().to_list() } # convert to dict
         time.sleep(self.sleep_interval)
         return({
@@ -76,6 +78,8 @@ class lcbench(Worker):
         self.mfsurrogates = importr("mfsurrogates")
         self.session = onnxruntime.InferenceSession("experiments/problems/lcbench/model.onnx")
         self.param_set = base.readRDS("experiments/problems/lcbench/param_set.rds")
+        self.codomain = base.readRDS("experiments/problems/lcbench/codomain.rds")  # FIXME: download manually from lrz or create from cfg
+        self.data_order = base.readRDS("experiments/problems/lcbench/data_order.rds")        
         self.trafo_dict = base.readRDS("experiments/problems/lcbench/dicts.rds")
         self.target_names = ["val_accuracy", "val_cross_entropy", "val_balanced_accuracy", "test_cross_entropy", "test_balanced_accuracy", "time"]
         pandas2ri.activate()
@@ -93,11 +97,11 @@ class lcbench(Worker):
         config.update({"epoch": int(budget)})  # FIXME: budget trafo to match epoch range and int
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
-        li_ = self.mfsurrogates.convert_for_onnx(xdt, param_set = self.param_set, trafo_dict = self.trafo_dict)
+        li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       
         li = { key : li_.rx2(key) for key in li_.names }
         li["continuous"] = np.atleast_2d(li["continuous"]).astype("float32")
         res_ = self.session.run(None, li)[0]
-        res_ = self.mfsurrogates.retrafo_predictions(res_, target_names = self.target_names, trafo_dict = self.trafo_dict)        
+        res_ = self.mfsurrogates.retrafo_predictions(res_, target_names = self.target_names, codomain = self.codomain, trafo_dict = self.trafo_dict)        
         res =  { key : res_[key] for key in res_.keys().to_list() } #
         time.sleep(self.sleep_interval)
         return({
@@ -122,6 +126,8 @@ class rbv2_super(Worker):
         self.mfsurrogates = importr("mfsurrogates")
         self.session = onnxruntime.InferenceSession("experiments/problems/rbv2_super/model.onnx")
         self.param_set = base.readRDS("experiments/problems/rbv2_super/param_set.rds")
+        self.codomain = base.readRDS("experiments/problems/rbv2_super/codomain.rds")  # FIXME: download manually from lrz or create from cfg
+        self.data_order = base.readRDS("experiments/problems/rbv2_super/data_order.rds")        
         self.trafo_dict = base.readRDS("experiments/problems/rbv2_super/dicts.rds")
         self.target_names = ["mmce", "f1", "auc", "logloss", "timetrain", "timepredict"]
         pandas2ri.activate()
@@ -139,11 +145,11 @@ class rbv2_super(Worker):
         config.update({"trainsize": int(budget)})  # FIXME: budget trafo to match epoch range and int
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
-        li_ = self.mfsurrogates.convert_for_onnx(xdt, param_set = self.param_set, trafo_dict = self.trafo_dict)
+        li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       
         li = { key : li_.rx2(key) for key in li_.names }
         li["continuous"] = np.atleast_2d(li["continuous"]).astype("float32")
         res_ = self.session.run(None, li)[0]
-        res_ = self.mfsurrogates.retrafo_predictions(res_, target_names = self.target_names, trafo_dict = self.trafo_dict)        
+        res_ = self.mfsurrogates.retrafo_predictions(res_, target_names = self.target_names, codomain = self.codomain, trafo_dict = self.trafo_dict)        
         res =  { key : res_[key] for key in res_.keys().to_list() } #
         time.sleep(self.sleep_interval)
         return({
