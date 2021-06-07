@@ -39,8 +39,8 @@ readProblem = function(data, job, task, objectives, ...) {
     }
   }
 
-  # We give a total budget of lbmax * 30 * d
-  BUDGET_MAX = B_MULTIPLIER * length(param_ids) * budget_upper
+  # We give a total budget of lbmax * 30 * d * PARALLELIZATION_MAX 
+  BUDGET_MAX = B_MULTIPLIER * length(param_ids) * budget_upper * 32
 
   if (is.na(task)) {
     obj = data$get_objective(target_variables = objectives)   
