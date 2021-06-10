@@ -9,10 +9,11 @@ source(file.path(root, "irace", "optimization.R"))
 workdir = file.path(root, "irace/data/surrogates")
 highest_budget_only = TRUE
 
-eval = function(xs, instance, budget_factor = 30, ...) {
+eval = function(job, data, instance, budget_factor = 30, ...) {
   # ML: wrap and unpack
   irace_instance = instance
   irace_instance$surrogate_learner = irace_instance$surrogate_learner[[1L]]
+  xs = list(...)
     
   # stop time for irace
   t0 = Sys.time()
@@ -151,12 +152,14 @@ for (i in seq_along(lambda)) {
 }
 
 
-# testJob(32)
+testJob(32)
+
+# FIXME: budget factor?
 
 
-# get all jobs to investigate param 'id'
-findJobsHP = function(id, problem) {
-  ijoin(findExperiments(prob.name = problem), findTagged(c(id, "baseline")))
-}
+# # get all jobs to investigate param 'id'
+# findJobsHP = function(id, problem) {
+#   ijoin(findExperiments(prob.name = problem), findTagged(c(id, "baseline")))
+# }
 
-findJobsHP("filter_factor_first", "lcbench_1")
+# findJobsHP("filter_factor_first", "lcbench_1")
