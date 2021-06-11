@@ -75,9 +75,11 @@ eval = function(job, data, instance, budget_factor = 30, ...) {
 library(batchtools)
 ngrid = 5L # How many points on a grid for real values?
 reg = makeExperimentRegistry(file.dir = NA)
+reg$source = "../../irace/optimization.R"
+saveRegistry(reg)
 
 # table of all problems
-instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE]
+instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[cfg %in% c("lcbench", "rbv2_super")]
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
 instances_plan[,lower := ifelse(cfg == "lcbench", 1, 3^(-3))]
 instances_plan[,upper := ifelse(cfg == "lcbench", 52, 1)]
@@ -106,7 +108,7 @@ lambda$surrogate_learner = list(lambda$surrogate_learner) # batchtools complains
 ids = addExperiments(
   prob.designs = prob_designs, 
   algo.designs = list(eval = as.data.table(lambda)),
-  repls = 1
+  repls = 3
 )
 addJobTags(ids, "baseline")
 
@@ -144,8 +146,7 @@ for (i in seq_along(lambda)) {
   ids = addExperiments(
     prob.designs = prob_designs, 
     algo.designs = list(eval = rbindlist(lambdas, use.names = TRUE)),
-    repls = 1L,
-    reg = reg
+    repls = 3L
   )
 
   addJobTags(ids, id)
