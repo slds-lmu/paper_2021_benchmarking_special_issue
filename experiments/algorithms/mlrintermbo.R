@@ -22,11 +22,6 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate, multi.point)
 
 	optimizer = OptimizerInterMBO$new()
 	
-
-	if (instance$name == "nb301") {
-
-	}
-
 	start_t = Sys.time()
 	optimizer$optimize(ins)
 	end_t = Sys.time()

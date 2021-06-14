@@ -78,7 +78,7 @@ names(surr_data) = surrogates
 
 # TODO: Optimize cross entropy for nb301? 
 pdes = list(nb301 = data.table(objectives = c("val_accuracy")), 
-			lcbench = data.table(objectives = c("val_accuracy")), 
+			lcbench = data.table(objectives = c("val_cross_entropy")), 
 			rbv2_super = data.table(objectives = c("logloss"))
 			)
 
