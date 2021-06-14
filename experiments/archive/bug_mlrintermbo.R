@@ -22,7 +22,7 @@ obj = cfg$get_objective(target_variables = "val_accuracy")
 
 ins = OptimInstanceSingleCrit$new(
   objective = obj,
-  terminator = trm("budget", budget = 50, aggregate = sum) 
+  terminator = trm("budget", budget = 10000, aggregate = sum) 
 )
 
 optimizer$optimize(ins)

@@ -118,7 +118,7 @@ des = lapply(ALGORITHMS, function(x) x$ades)
 
 
 # instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))
-# instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_accuracy"))
+# instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("logloss"))
 
 # NB301 takes approx. 44 minutes 
 
