@@ -20,18 +20,18 @@ tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
 
 # 1. RANDOMSERACH 
-# Time: ~ less than a minute
-tosubmit_rs = tosubmit[algorithm == "randomsearch", ]
-tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 50)
+# Time: ~ 4 minutes
+tosubmit_rs = tosubmit[algorithm == "randomsearch" & full_budget == TRUE, ]
+tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 350)
 
 submitJobs(tosubmit_rs, resources = resources.serial.default)
 
 
 # 2. mlrintermbo 
-# Time (full budget = TRUE): 	20 min
-# Time (full_budget = FALSE): 	34 min
+# Time (full budget = TRUE): 	 min
+# Time (full_budget = FALSE): 	3.85 h
 tosubmit_mbo = tosubmit[algorithm == "mlrintermbo" & full_budget == TRUE, ]
-tosubmit_mbo$chunk = chunk(tosubmit_mbo$job.id, chunk.size = 5)
+tosubmit_mbo$chunk = chunk(tosubmit_mbo$job.id, chunk.size = 15)
 
 submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
@@ -39,15 +39,23 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 # 3. BOHB
 # Time: ~ 20 minutes
 tosubmit_hpbster = tosubmit[algorithm_type == "bohb", ]
-tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 60)
+tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 100)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
-# 4. mlr3hyperband
-# Time: ~ less than a minute 
+# 4. HB
+# Time: ~ ?? minutes
+tosubmit_hpbster = tosubmit[algorithm_type == "hb", ]
+tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 350)
+tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
+submitJobs(tosubmit_hpbster, resources = resources.serial.default)
+
+
+# 5. mlr3hyperband
+# Time: ~ 4 minutes 
 tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
-tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 1050)
+tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 350)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
 

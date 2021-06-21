@@ -16,6 +16,11 @@ ins = OptimInstanceSingleCrit$new(
 optimizer$optimize(ins) # Works well 
 
 
+
+WORKDIR = "experiments/problems/"
+
+optimizer = OptimizerInterMBO$new()
+
 # Does not work for nb301
 cfg = cfgs("nb301", workdir = WORKDIR)
 obj = cfg$get_objective(target_variables = "val_accuracy")   
@@ -24,6 +29,20 @@ ins = OptimInstanceSingleCrit$new(
   objective = obj,
   terminator = trm("budget", budget = 10000, aggregate = sum) 
 )
+
+surrogate = makeMlr3Surrogate(is.numeric = FALSE, is.noisy = TRUE, has.dependencies = FALSE) 
+
+cls = ins$search_space$class
+is_mixed = any(!cls %in% c("ParamDbl", "ParamInt"))
+
+if (is_mixed)
+	surrogate = makeMlr3Surrogate(is.numeric = FALSE, is.noisy = TRUE, has.dependencies = TRUE) 
+
+graph = po("removeconstants") %>>% surrogate
+surrogate = as_learner(graph)
+
+optimizer$param_set$values = list(surrogate.learner = surrogate)
+
 
 optimizer$optimize(ins)
 

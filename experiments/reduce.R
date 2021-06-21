@@ -15,7 +15,7 @@ get_runtime_overview = function(tab) {
 }
 
 runtimes = get_runtime_overview(tab)
-runtimes[, mean(result[[1]]), by = c("algorithm", "algorithm_type", "full_budget")]
+runtimes[, mean(result[[1]]) / 60, by = c("algorithm", "algorithm_type", "full_budget")]
 saveRDS(runtimes, "experiments/results/runtimes.rds")
 
 

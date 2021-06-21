@@ -2,11 +2,6 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate, multi.point)
 
 	ins = instance$ins
 
-	# # If no simple sequential BO is performed, we limit the number of evaluations
-	# if (multi.point == 1L) {
-	# 	ins$terminator$param_set$values$budget = ins$terminator$param_set$values$budget / 32L
-	# }
-
 	budget_idx = which(ins$search_space$tags %in% c("budget", "fidelity"))
 	budget_id = ins$search_space$ids()[budget_idx]
 
@@ -22,6 +17,8 @@ mlrintermbo = function(data, job, instance, full_budget, surrogate, multi.point)
 
 	optimizer = OptimizerInterMBO$new()
 	
+	optimizer$param_set$values$propose.points = multi.point
+
 	start_t = Sys.time()
 	optimizer$optimize(ins)
 	end_t = Sys.time()
