@@ -66,10 +66,10 @@ submitJobs(tosubmit_hb, resources = resources.serial.default)
 
 # 6. smac
 # Time: ~ 4 minutes 
-tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
-tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 350)
-tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
-submitJobs(tosubmit_hb, resources = resources.serial.default)
+tosubmit_smac = tosubmit[algorithm == "smac", ]
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 350)
+tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
+submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
 

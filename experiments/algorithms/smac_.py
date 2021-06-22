@@ -113,6 +113,7 @@ def main(args):
     parser.add_argument("--total_budget", type=int, required=True) 
     parser.add_argument("--objective", type=str, required=True)
     parser.add_argument("--objective_multiplier", type=int, required=True)
+    parser.add_argument("--seed", type=int, required=True)
     args = parser.parse_args(args)
 
     print(args.full_budget)
@@ -145,7 +146,7 @@ def main(args):
 
     print("Optimizing!")
     smac = SMAC4HPO(scenario = scenario,
-                   rng = np.random.RandomState(42), # TODO: Hand over properly! 
+                   rng = np.random.RandomState(args.seed), 
                    tae_runner = fun,
                    run_id = 1
                    )
@@ -159,12 +160,17 @@ def main(args):
     values = [history.get_cost(conf) for conf in history.get_all_configs()]
 
     # Iterate in case we are not 
-    if not args.full_budget:
+    if args.full_budget:
+        budget = [args.maxbudget for el in history.get_all_configs()]
+    else:
         total_budget_spent = sum(budget)
         i = 2
         while total_budget_spent < args.total_budget: # Compute the total budget spent, and if not increase budget by a heuristic
             print('Budget not fully spent: ' + str(total_budget_spent) + ' < ' + str(args.total_budget))
-            new_data = create_new_scenario(scen, out_dir, total_budget_in_evals * i)         # specify a new scenario
+            evals_per_budget = len(budget) / total_budget_spent
+            new_budget_in_evals = math.ceil((args.total_budget - total_budget_spent) * evals_per_budget)
+            print("Total budget in evals: " + str(new_budget_in_evals))
+            new_data = create_new_scenario(scen, out_dir, total_budget_in_evals + new_budget_in_evals)         # specify a new scenario
             smac = SMAC4HPO(scenario=new_data['scenario'],         # Now we can initialize SMAC with the recovered objects 
                         runhistory=new_data['runhistory'],
                         stats=new_data['stats'],
@@ -174,8 +180,8 @@ def main(args):
             history = smac.get_runhistory()
             budget = [el[args.budget_param] for el in history.get_all_configs()]
             values = [history.get_cost(conf) for conf in history.get_all_configs()]
-            i = i + 1
             total_budget_spent = sum(budget)
+            i = i + 1
 
 
     values = values * args.objective_multiplier
@@ -183,7 +189,6 @@ def main(args):
 
     with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
         pickle.dump(df, fh)  
-
 
 
 if __name__ == "__main__":

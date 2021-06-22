@@ -28,7 +28,8 @@ smac = function(data, job, instance, full_budget, ...) {
     	" --task ", instance$task, " --budget_param ",  budget_id, 
     	" --minbudget ", budget_lower, " --maxbudget ", budget_upper, 
     	" --full_budget ", full_budget, " --total_budget ", total_budget, 
-    	" --objective ", cid, " --objective_multiplier ", objective_multiplier))
+    	" --objective ", cid, " --objective_multiplier ", objective_multiplier, 
+    	" --seed ", job$seed))
 	end_t = Sys.time()
 
 	if (out != 0)

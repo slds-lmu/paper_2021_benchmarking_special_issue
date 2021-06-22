@@ -23,7 +23,7 @@ switch(SETUP,
 		# replications
 		REPLS = 1L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
-		B_MULTIPLIER = 5
+		B_MULTIPLIER = 1 / 4
 	},
 	"REAL" = {
 		# do never overwrite registry
