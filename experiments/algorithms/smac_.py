@@ -12,6 +12,7 @@ from rpy2.robjects import pandas2ri
 from ConfigSpace.read_and_write import json
 import onnxruntime
 
+import smac
 from smac.configspace import ConfigurationSpace
 from smac.facade.smac_hpo_facade import SMAC4HPO
 # Import SMAC-utilities
@@ -26,6 +27,7 @@ from smac.utils.io.traj_logging import TrajLogger
 import math
 import os
 import pickle
+import sys
 
 class worker():
     def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, full_budget, total_budget, *args, **kwargs):
@@ -107,11 +109,18 @@ def main(args):
     parser.add_argument("--budget_param", type=str, required = True)
     parser.add_argument("--minbudget", type=int, required=True)
     parser.add_argument("--maxbudget", type=int, required=True) 
-    parser.add_argument("--full_budget", type=bool, required=True)
+    parser.add_argument("--full_budget", type=str, required=True)
     parser.add_argument("--total_budget", type=int, required=True) 
     parser.add_argument("--objective", type=str, required=True)
     parser.add_argument("--objective_multiplier", type=int, required=True)
     args = parser.parse_args(args)
+
+    print(args.full_budget)
+
+    if args.full_budget == 'TRUE':
+        args.full_budget = True
+    else: 
+        args.full_budget = False
 
     logging.basicConfig(level=logging.INFO) 
 
@@ -166,6 +175,7 @@ def main(args):
             budget = [el[args.budget_param] for el in history.get_all_configs()]
             values = [history.get_cost(conf) for conf in history.get_all_configs()]
             i = i + 1
+            total_budget_spent = sum(budget)
 
 
     values = values * args.objective_multiplier

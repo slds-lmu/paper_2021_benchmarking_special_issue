@@ -9,9 +9,10 @@ source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 source("experiments/algorithms/hpbster.R")
+source("experiments/algorithms/smac_.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
@@ -79,7 +80,6 @@ surr_data = lapply(surrogates, function(surr) {
 
 names(surr_data) = surrogates
 
-# TODO: Optimize cross entropy for nb301? 
 pdes = list(nb301 = data.table(objectives = c("val_accuracy")), 
 			lcbench = data.table(objectives = c("val_cross_entropy")), 
 			rbv2_super = data.table(objectives = c("logloss"))
@@ -114,7 +114,8 @@ ALGORITHMS = list(
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), 
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE, FALSE, TRUE), multi.point = c(1L, 1L, 32L, 32L))), 
     # smashy = list(fun = smashy, ades = data.table()), 
-    hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb")))
+    hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb"))), 
+    smac = list(fun = smac, ades = data.table(full_budget = c(FALSE, TRUE)))
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)

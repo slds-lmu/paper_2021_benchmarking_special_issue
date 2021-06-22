@@ -22,12 +22,8 @@ smac = function(data, job, instance, full_budget, ...) {
 	# Compute the total budget * 32 (such that we can reconstruct parallelization afterwards)
 	total_budget = ins$terminator$param_set$values$budget
 
-	if (!full_budget) {
-		full_budget = ''
-	}
-
 	start_t = Sys.time()
-    out = system2('python3', c("experiments/algorithms/smac.py", 
+    out = system2('/usr/bin/python3', c("experiments/algorithms/smac_.py", 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 
     	" --task ", instance$task, " --budget_param ",  budget_id, 
     	" --minbudget ", budget_lower, " --maxbudget ", budget_upper, 
@@ -36,7 +32,7 @@ smac = function(data, job, instance, full_budget, ...) {
 	end_t = Sys.time()
 
 	if (out != 0)
-		stop("Error in execution of hpbandster.")
+		stop("Error in execution of smac.")
 
     return(list(runtime = end_t - start_t))
 }
