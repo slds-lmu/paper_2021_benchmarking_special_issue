@@ -9,6 +9,7 @@ source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/smashy.R")
 source("experiments/algorithms/hpbster.R")
+source("experiments/algorithms/smac_.R")
 
 # Test setup with reduced budget (see below) or real setup 
 SETUP = "REAL"
@@ -22,7 +23,7 @@ switch(SETUP,
 		# replications
 		REPLS = 1L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
-		B_MULTIPLIER = 5
+		B_MULTIPLIER = 1 / 4
 	},
 	"REAL" = {
 		# do never overwrite registry
@@ -52,6 +53,9 @@ packages = c(
   "mlr3pipelines"
 ) 
 
+# remotes::install_github("mlr-org/ParamHelpers@handle_long_reqs")
+
+
 lapply(packages, library, character.only = TRUE)
 
 # --- 1. PROBLEM DESIGN ---
@@ -76,9 +80,8 @@ surr_data = lapply(surrogates, function(surr) {
 
 names(surr_data) = surrogates
 
-# TODO: Optimize cross entropy for nb301? 
 pdes = list(nb301 = data.table(objectives = c("val_accuracy")), 
-			lcbench = data.table(objectives = c("val_accuracy")), 
+			lcbench = data.table(objectives = c("val_cross_entropy")), 
 			rbv2_super = data.table(objectives = c("logloss"))
 			)
 
@@ -111,14 +114,15 @@ ALGORITHMS = list(
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), 
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE, FALSE, TRUE), multi.point = c(1L, 1L, 32L, 32L))), 
     # smashy = list(fun = smashy, ades = data.table()), 
-    hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb")))
+    hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb"))), 
+    smac = list(fun = smac, ades = data.table(full_budget = c(FALSE, TRUE)))
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)
 
 
 # instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))
-# instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_accuracy"))
+# instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_cross_entropy"))
 
 # NB301 takes approx. 44 minutes 
 

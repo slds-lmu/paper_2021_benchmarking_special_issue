@@ -16,3 +16,5 @@ irace/data*
 
 *code-workspace
 
+*__pycache__*
+

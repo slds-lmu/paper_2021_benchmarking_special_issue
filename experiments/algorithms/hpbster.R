@@ -42,6 +42,7 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
     	" --maxbudget ", budget_upper, " --eta ",  eta, 
     	" --fullbudget ", fullbudget, " --objective ", cid, 
     	" --objective_multiplier ", objective_multiplier))
+    	#" --seed ", job$seed))
 	end_t = Sys.time()
 
 	if (out != 0)

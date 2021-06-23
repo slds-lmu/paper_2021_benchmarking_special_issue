@@ -44,6 +44,7 @@ readProblem = function(data, job, task, objectives, ...) {
 
   if (is.na(task)) {
     obj = data$get_objective(target_variables = objectives)   
+    task = NA
   } else {
     obj = data$get_objective(task = task, target_variables = objectives)  
   }   
