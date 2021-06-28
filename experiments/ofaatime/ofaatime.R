@@ -2,19 +2,18 @@ library(data.table)
 library(paradox)
 library(mlr3misc)
 root = here::here()
-
+workdir = file.path(root, "irace/data/surrogates")
 
 # stuff copied from marc
 source(file.path(root, "irace", "optimization.R"))
-workdir = file.path(root, "irace/data/surrogates")
-highest_budget_only = TRUE
 
-eval = function(job, data, instance, budget_factor = 30, ...) {
-  # ML: wrap and unpack
+eval_ = function(job, data, instance, budget_factor = 30, ...) {
+  root = here::here()
+  workdir = file.path(root, "irace/data/surrogates")
   irace_instance = instance
-  irace_instance$surrogate_learner = irace_instance$surrogate_learner[[1L]]
   xs = list(...)
-    
+  xs$surrogate_learner = xs$surrogate_learner[[1L]]
+
   # stop time for irace
   t0 = Sys.time()
 
@@ -42,125 +41,135 @@ eval = function(job, data, instance, budget_factor = 30, ...) {
   search_space$deps = domain$deps
 
   # calculate smashy budget
-  budget_limit = search_space$length * budget_factor * budget_upper
+  budget_limit = 32 * search_space$length * budget_factor * budget_upper
 
   # call smashy with configuration parameter in xs
-  instance = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, 
-    search_space = search_space, .args = xs)
+  instance_ = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, search_space = search_space, .args = xs)
 
-  cols_y = instance$archive$cols_y
-
-  # the objective is maximized
-  objective_multiplicator = unname(instance$objective_multiplicator) * -1
-
-  # filter for experiments with highest budget only
-  if (highest_budget_only) instance$archive$data = instance$archive$data[get(budget_id) == max(get(budget_id)), ]
-
-  # apply target_trafo
-  if (!is.null(irace_instance$target_trafo)) instance$archive$data = irace_instance$target_trafo(instance$archive$data)
-
-  y = if (instance$objective$codomain$length > 1) {
-    # hypervolume
-    mat = as.matrix(instance$archive$data[, cols_y, with = FALSE])
-    mat = sweep(mat, 2, objective_multiplicator, `*`)
-    miesmuschel:::domhv(mat, nadir = irace_instance$nadir * objective_multiplicator) 
-  } else {
-    # best performance
-    as.numeric(instance$archive$best()[, cols_y, with = FALSE]) * objective_multiplicator
-  }
-
-  list(y = y, time = as.numeric(difftime(Sys.time(), t0, units = "secs")))
+  list(archive = instance_$archive, time = as.numeric(difftime(Sys.time(), t0, units = "secs")))
 }
 
 library(batchtools)
 ngrid = 5L # How many points on a grid for real values?
-reg = makeExperimentRegistry(file.dir = NA)
-reg$source = "../../irace/optimization.R"
+reg = makeExperimentRegistry(file.dir = "registry_new", source = file.path(root, "irace", "optimization.R"))
 saveRegistry(reg)
 
 # table of all problems
 instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[cfg %in% c("lcbench", "rbv2_super")]
-instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
-instances_plan[,lower := ifelse(cfg == "lcbench", 1, 3^(-3))]
-instances_plan[,upper := ifelse(cfg == "lcbench", 52, 1)]
-instances_plan[,id_plan := 1:.N]
+instances_plan[, targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
+instances_plan[, lower := ifelse(cfg == "lcbench", 1, 3 ^ (-3))]
+instances_plan[, upper := ifelse(cfg == "lcbench", 52, 1)]
+instances_plan[, id_plan := 1:.N]
 instances_plan
 
 # add problems
-prob_designs = imap(split(instances_plan, instances_plan$id_plan), function(instance, name) {
-  prob_id = sprintf("%s_%s", instance$cfg[1], name)
+prob_designs = imap(split(instances_plan, instances_plan$id_plan), function(instancex, name) {
+  prob_id = sprintf("%s_%s", instancex$cfg[1], name)
   addProblem(prob_id, fun = function(...) list(...), seed = 123)
-  set_names(list(instance), prob_id)
+  set_names(list(instancex), prob_id)
 })
 nn = sapply(prob_designs, names)
 prob_designs = unlist(prob_designs, recursive = FALSE, use.names = FALSE)
 names(prob_designs) = nn
 
-# add eval algorithm
-addAlgorithm("eval", fun = eval)
+# add eval_ algorithm (never use `eval` as a function name or have a function named `eval` in .GlobalEnv)
+addAlgorithm("eval_", fun = eval_)
 
 irace_result = readRDS(file.path(root, "irace", "data", "data_31_05_single", "irace_instance.rda"))
 searchspace = irace_result$search_space
+on_log_scale = c("budget_log_step", "mu", "filter_factor_first", "filter_factor_last", "filter_select_per_tournament",
+  "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end")  # FIXME: any way to get this automatic?
 lambda = irace_result$result_x_domain
-lambda$surrogate_learner = list(lambda$surrogate_learner) # batchtools complains otherwise
+kknn = lambda$surrogate_learner
+ranger = irace_result$archive$data$x_domain[[1]]$surrogate_learner
+lambda$surrogate_learner = list(list(kknn)) # batchtools complains otherwise
 
 # baseline / comparison experiments
 ids = addExperiments(
   prob.designs = prob_designs, 
-  algo.designs = list(eval = as.data.table(lambda)),
-  repls = 3
+  algo.designs = list(eval_ = as.data.table(lambda)),
+  repls = 3L
 )
 addJobTags(ids, "baseline")
 
-
 for (i in seq_along(lambda)) {
   id = names(lambda)[i]
+
   if (id == "surrogate_learner") {
-    next
-  }
-  value = lambda[[i]]
-  param = searchspace$params[[id]]
-  algo.design = as.data.table(lambda)
+    lambdas = lambda
+    lambdas$surrogate_learner[[1L]] = list(ranger)
+    lambdas = as.data.table(lambdas)
 
-  lambdas = switch(param$class,
-    ParamLgl = ,
-    ParamFct = {
-      lapply(param$levels, function(val) {
-        insert_named(lambda, set_names(list(val), id))
-      })
-    },
+    ids = addExperiments(
+      prob.designs = prob_designs,
+      algo.designs = list(eval_ = lambdas),
+      repls = 3L
+    )
 
-    ParamInt = {
-      lapply(unique(round(seq(from = param$lower, to = param$upper, length.out = ngrid))), function(val) {
-        insert_named(lambda, set_names(list(as.integer(val)), id))
-      })
-    },
+    addJobTags(ids, id)
+  } else {
+    value = lambda[[i]]
+    param = searchspace$params[[id]]
+    algo.design = as.data.table(lambda)
 
-    ParamDbl = {
-      lapply(seq(from = param$lower, to = param$upper, length.out = ngrid), function(val) {
-        insert_named(lambda, set_names(list(val), id))
-      })
+    lambdas = switch(param$class,
+      ParamLgl = ,
+      ParamFct = {
+        lapply(param$levels, function(val) {
+          insert_named(lambda, set_names(list(val), id))
+        })
+      },
+
+      ParamInt = {
+        lapply(unique(round(seq(from = param$lower, to = param$upper, length.out = ngrid))), function(val) {
+          insert_named(lambda, set_names(list(as.integer(val)), id))
+        })
+      },
+
+      ParamDbl = {
+        lapply(seq(from = param$lower, to = param$upper, length.out = ngrid), function(val) {
+          insert_named(lambda, set_names(list(val), id))
+        })
+      }
+    )
+
+    lambdas = rbindlist(lambdas, use.names = TRUE)
+
+    if (id %in% on_log_scale) {
+      lambdas[, (id) := exp(get(id))]
     }
-  )
 
-  ids = addExperiments(
-    prob.designs = prob_designs, 
-    algo.designs = list(eval = rbindlist(lambdas, use.names = TRUE)),
-    repls = 3L
-  )
+    if (id %in% c("mu", "filter_select_per_tournament", "filter_select_per_tournament.end")) {  # FIXME: these are double on log and integer after retrafo?
+      lambdas[, (id) := as.integer(round(get(id)))]
+    }
 
-  addJobTags(ids, id)
+    ids = addExperiments(
+      prob.designs = prob_designs,
+      algo.designs = list(eval_ = lambdas),
+      repls = 3L
+    )
+
+    addJobTags(ids, id)
+  }
 }
 
+#testJob(32, external = TRUE)
+#testJob(2236)
+#testJob(6325)
 
-testJob(32)
+# Standard resources used to submit jobs to cluster
+resources.serial.default = list(
+  walltime = 30000L, memory = 1024L, clusters = "serial", max.concurrent.jobs = 50L
+)
+
+all_jobs = findJobs()
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)]
+submitJobs(all_jobs, resources = resources.serial.default)
 
 # FIXME: budget factor?
 
+# get all jobs to investigate param "id"
+findJobsHP = function(id, problem) {
+  ijoin(findExperiments(prob.name = problem), findTagged(c(id, "baseline")))
+}
 
-# # get all jobs to investigate param 'id'
-# findJobsHP = function(id, problem) {
-#   ijoin(findExperiments(prob.name = problem), findTagged(c(id, "baseline")))
-# }
-
-# findJobsHP("filter_factor_first", "lcbench_1")

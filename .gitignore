@@ -4,6 +4,7 @@ tmp*
 *hdf5
 *rds
 *onnx
+*png
 
 *notes.txt
 experiments/results/
