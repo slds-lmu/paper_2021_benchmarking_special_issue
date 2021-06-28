@@ -119,7 +119,7 @@ ALGORITHMS = list(
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, FALSE, TRUE), multi.point = c(1L, 1L, 1L), log_scale = c(FALSE, TRUE, NA))), # TODO: Implement multipoint
     # smashy = list(fun = smashy, ades = data.table()), 
     hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb"))), # log-scale not relevant
-    smac = list(fun = smac, ades = data.table(full_budget = c(FALSE, TRUE), multi.point = c(FALSE, FALSE))) # TODO: Implement log-scale
+    smac = list(fun = smac, ades = data.table(full_budget = c(FALSE, TRUE), multi.point = c(1L, 1L))) # TODO: Implement log-scale
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)

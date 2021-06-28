@@ -20,11 +20,7 @@ smac = function(data, job, instance, full_budget, multi.point, ...) {
 
 	# total budget the run is given
 	# Compute the total budget (such that we can reconstruct parallelization afterwards)
-	if (multi.point) {
-		total_budget = ins$terminator$param_set$values$budget * PARALLELIZATION
-	} else {
-		total_budget = ins$terminator$param_set$values$budget 		
-	}
+	total_budget = ins$terminator$param_set$values$budget * PARALLELIZATION
 
 	job = list(external.dir = ".", seed = 1)
 	full_budget = TRUE
