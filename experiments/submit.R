@@ -66,8 +66,10 @@ submitJobs(tosubmit_hb, resources = resources.serial.default)
 
 # 6. smac
 # Time: ~ 4 minutes 
-tosubmit_smac = tosubmit[algorithm == "smac", ]
-tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 350)
+# Only send half of the tasks for now
+tasks = unique(tosubmit$task)[1:15]
+tosubmit_smac = tosubmit[task %in% tasks & algorithm == "smac", ]
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 9)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 

@@ -29,6 +29,9 @@ import os
 import pickle
 import sys
 
+import dask
+from distributed import Client
+
 class worker():
     def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, full_budget, total_budget, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -114,6 +117,7 @@ def main(args):
     parser.add_argument("--objective", type=str, required=True)
     parser.add_argument("--objective_multiplier", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--multi.point", type=int, required=True)
     args = parser.parse_args(args)
 
     print(args.full_budget)

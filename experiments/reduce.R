@@ -41,10 +41,8 @@ for (prob in c("lcbench")) {
 
 			notdone = ijoin(tored, findNotDone())
 
-			if (is.null(status_summary)) {
-				status_summary = rbind(status_summary, data.table(problem = prob, task = tsk, algorithm = algo, done = nrow(toreduce), open = nrow(notdone)))
-			}
-
+			status_summary = rbind(status_summary, data.table(problem = prob, task = tsk, algorithm = algo, done = nrow(toreduce), open = nrow(notdone)))
+			
 			if (nrow(toreduce) > 0) {
 
 				print(paste("Reducing: ", algo, "for task", tsk))
@@ -53,7 +51,7 @@ for (prob in c("lcbench")) {
 					x$archive[, c("budget", "performance")]
 				})
 
-				if (algo == "hpbster") {
+				if (algo %in% c("hpbster", "smac")) {
 
 					library(reticulate)
 					pd = import("pandas")
@@ -66,10 +64,16 @@ for (prob in c("lcbench")) {
 						path = file.path(reg$file.dir, "external", jid, "results.pkl")
 
 						if (file.exists(path)) {
-							df = pd$read_pickle(path)$get_pandas_dataframe()
-							df = as.data.table(df)
 
-							names(df)[which(names(df) == "loss")] = "performance"
+							if (algo == "hpbster"){
+								df = pd$read_pickle(path)$get_pandas_dataframe()
+								df = as.data.table(df)
+								names(df)[which(names(df) == "loss")] = "performance"
+							} 
+							if (algo == "smac") {
+								df = as.data.table(pd$read_pickle(path))
+							}
+
 
 							if (tab[job.id == jid, ]$objectives == "val_accuracy")
 								df$performance = (-1) * df$performance
@@ -101,7 +105,7 @@ for (prob in c("lcbench")) {
 	}
 }
 
-saveRDS(status_summary, "experiments/results/runtimes.rds")
+saveRDS(status_summary, "experiments/results/status_summary.rds")
 
 
 
@@ -112,10 +116,6 @@ res = reduceResultsDataTable(toreduce)
 res = ijoin(tab, res)
 
 toupdate = res[which(res$algorithm_type %in% c("bohb", "hb")), ]$job.id
-
-
-
-
 
 for (tsk in tasks) {
 

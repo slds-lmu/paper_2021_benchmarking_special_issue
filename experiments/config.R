@@ -12,7 +12,7 @@ source("experiments/algorithms/hpbster.R")
 source("experiments/algorithms/smac_.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
@@ -23,7 +23,9 @@ switch(SETUP,
 		# replications
 		REPLS = 1L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
-		B_MULTIPLIER = 1 / 4
+		B_MULTIPLIER = 1 
+		# PARALELLIZATION FACTOR
+		PARALLELIZATION = 4L
 	},
 	"REAL" = {
 		# do never overwrite registry
@@ -34,6 +36,8 @@ switch(SETUP,
 		REPLS = 30L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
 		B_MULTIPLIER = 30
+		# PARALELLIZATION FACTOR
+		PARALLELIZATION = 32L
 	}
 )
 
@@ -110,12 +114,12 @@ names(pdes) = surrogates
 # --- 2. ALGORITHM DESIGN ---
 
 ALGORITHMS = list(
-    randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(FALSE, TRUE))), 
-    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), 
-    mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, TRUE, FALSE, TRUE), multi.point = c(1L, 1L, 32L, 32L))), 
+    randomsearch = list(fun = randomsearch, ades = data.table(full_budget = c(TRUE, FALSE, FALSE), log_scale = c(NA, FALSE, TRUE))), 
+    mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), # log-scale not relevant
+    mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = c(FALSE, FALSE, TRUE), multi.point = c(1L, 1L, 1L), log_scale = c(FALSE, TRUE, NA))), # TODO: Implement multipoint
     # smashy = list(fun = smashy, ades = data.table()), 
-    hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb"))), 
-    smac = list(fun = smac, ades = data.table(full_budget = c(FALSE, TRUE)))
+    hpbster = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = c("hb", "bohb"))), # log-scale not relevant
+    smac = list(fun = smac, ades = data.table(full_budget = c(FALSE, TRUE))) # TODO: Implement log-scale
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)
