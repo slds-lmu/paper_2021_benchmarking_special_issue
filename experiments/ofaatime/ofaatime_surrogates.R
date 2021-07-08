@@ -1,6 +1,7 @@
 library(data.table)
 library(paradox)
 library(mlr3misc)
+library(mlr3extralearners) #@cubist_mars
 root = here::here()
 workdir = file.path(root, "irace/data/surrogates")
 
@@ -50,8 +51,8 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
 }
 
 library(batchtools)
-ngrid = 5L # How many points on a grid for real values?
-reg = makeExperimentRegistry(file.dir = "registry_new", source = file.path(root, "irace", "optimization.R"))
+#reg = makeExperimentRegistry(file.dir = NA, source = file.path(root, "irace", "optimization.R"))
+reg = makeExperimentRegistry(file.dir = "/dss/dssfs02/lwp-dss-0001/pr74ze/pr74ze-dss-0000/ru84tad2/registry_surrogates", source = file.path(root, "irace", "optimization.R"))
 saveRegistry(reg)
 
 # table of all problems
@@ -76,104 +77,51 @@ names(prob_designs) = nn
 addAlgorithm("eval_", fun = eval_)
 
 irace_result = readRDS(file.path(root, "irace", "data", "data_31_05_single", "irace_instance.rda"))
-searchspace = irace_result$search_space
-on_log_scale = c("budget_log_step", "mu", "filter_factor_first", "filter_factor_last", "filter_select_per_tournament",
-  "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end")  # FIXME: any way to get this automatic?
 lambda = irace_result$result_x_domain
-kknn = lambda$surrogate_learner
-ranger = irace_result$archive$data$x_domain[[1]]$surrogate_learner
-lambda$surrogate_learner = list(list(kknn)) # batchtools complains otherwise
 
-# baseline / comparison experiments
+imputepl = po("imputeoor", offset = 1, multiplier = 10) %>>% po("fixfactors") %>>% po("imputesample")
+imputepl_cubist =  po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% imputepl
+imputepl_mars = po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% po("encode") %>>% imputepl
+
+kknn = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
+kknn_local = kknn$clone(deep = TRUE)
+kknn_local$param_set$values$regr.kknn.k = 1
+kknn_local$id = paste0(kknn_local$id, ".1")
+
+learners = list(
+  ranger = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.ranger", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
+  knn = kknn,
+  kknn_local = kknn_local,
+  cubist = GraphLearner$new(imputepl_cubist %>>% mlr3::lrn("regr.cubist", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
+  mars = GraphLearner$new(imputepl_mars %>>% mlr3::lrn("regr.mars", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
+)
+learners = lapply(learners, function(x) { class(x) <- c("LearnerRegr", class(x)) ; x })
+
+lambda$surrogate_learner = list(list(lambda$surrogate_learner)) # batchtools complains otherwise
+
+lambda$random_interleave_fraction = 0.8 # 80% surrogate usage
+lambda$random_interleave_fraction.end = 0.8 # 80% surrogate usage
+
+id = "surrogate_learner"
+
+lambdas = lapply(learners, function(learner)  {
+  tmp = lambda
+  tmp$surrogate_learner[[1L]] = list(learner)
+  tmp
+})
+lambdas = rbindlist(lambdas, use.names = TRUE)
+
 ids = addExperiments(
   prob.designs = prob_designs, 
-  algo.designs = list(eval_ = as.data.table(lambda)),
-  repls = 3L
-)
-addJobTags(ids, "baseline")
-
-for (i in seq_along(lambda)) {
-  id = names(lambda)[i]
-
-  if (id == "surrogate_learner") {
-    lambdas = lambda
-    lambdas$surrogate_learner[[1L]] = list(ranger)
-    lambdas = as.data.table(lambdas)
-
-    ids = addExperiments(
-      prob.designs = prob_designs,
-      algo.designs = list(eval_ = lambdas),
-      repls = 3L
-    )
-
-    addJobTags(ids, id)
-  } else {
-    value = lambda[[i]]
-    param = searchspace$params[[id]]
-    algo.design = as.data.table(lambda)
-
-    lambdas = switch(param$class,
-      ParamLgl = ,
-      ParamFct = {
-        lapply(param$levels, function(val) {
-          insert_named(lambda, set_names(list(val), id))
-        })
-      },
-
-      ParamInt = {
-        lapply(unique(round(seq(from = param$lower, to = param$upper, length.out = ngrid))), function(val) {
-          insert_named(lambda, set_names(list(as.integer(val)), id))
-        })
-      },
-
-      ParamDbl = {
-        lapply(seq(from = param$lower, to = param$upper, length.out = ngrid), function(val) {
-          insert_named(lambda, set_names(list(val), id))
-        })
-      }
-    )
-
-    lambdas = rbindlist(lambdas, use.names = TRUE)
-
-    if (id %in% on_log_scale) {
-      lambdas[, (id) := exp(get(id))]
-    }
-
-    if (id %in% c("mu", "filter_select_per_tournament", "filter_select_per_tournament.end")) {  # FIXME: these are double on log and integer after retrafo?
-      lambdas[, (id) := as.integer(round(get(id)))]
-    }
-
-    ids = addExperiments(
-      prob.designs = prob_designs,
-      algo.designs = list(eval_ = lambdas),
-      repls = 3L
-    )
-
-    addJobTags(ids, id)
-  }
-}
-
-# turn surrogate off
-lambdas = lambda
-lambdas$random_interleave_fraction = 0
-lambdas$random_interleave_fraction.end = 0
-lambdas = as.data.table(lambdas)
-
-ids = addExperiments(
-  prob.designs = prob_designs,
   algo.designs = list(eval_ = lambdas),
-  repls = 3L
+  repls = 10L
 )
 
-addJobTags(ids, "surrogate_turned_off")
-
-#testJob(32, external = TRUE)
-#testJob(2236)
-#testJob(6325)
+addJobTags(ids, id)
 
 # Standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 24L * 2L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
+  walltime = 20L * 60L * 100L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
 )
 
 all_jobs = findJobs()
