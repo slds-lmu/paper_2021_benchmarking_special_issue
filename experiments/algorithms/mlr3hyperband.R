@@ -7,6 +7,9 @@ mlr3hyperband = function(data, job, instance, eta) {
 
 	cids = ins$objective$codomain$ids()
 
+	# Always set the budget to 32 times the budget
+	ins$terminator$param_set$values$budget = ins$terminator$param_set$values$budget * PARALLELIZATION
+
 	optimizer = OptimizerHyperband$new()
 	optimizer$param_set$values$eta = eta
 

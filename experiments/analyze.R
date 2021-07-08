@@ -1,38 +1,89 @@
 # SCRIPT TO CREATE FIGURES, TABLES, AND GRAPHICS
 
+source("experiments/helper.R")
+
 library(data.table)
 library(ggplot2)
 
 # Learning Curves for the different problems 
 problem = "lcbench"
-dirs = list.dirs("results/lcbench")
+path = file.path("experiments/results", problem)
+dirs = list.dirs(path)
 dirs = dirs[2:length(dirs)]
 
-algorithms = c("hpbster", "mlr3hyperband", "mlrintermbo", "randomsearch")
+instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds")
+
+algorithms = c("hpbster", "mlr3hyperband", "smac", "randomsearch")
+
+d = dirs[1]
+paths = paste0(d, "/", algorithms, ".rds")
 
 
-# TODO: 
-# 1) Learning Curve Plots
-# - Mark quantiles for ancertainties
-# - Parallel analyzation
-# - Mark end of the initial design 
-# - Mark Brackets 
-# - Show task
-# - Analyze why mlr3hyperband works so well
-# - Distinguish between train and test instances 
+results_baseline = readRDS("experiments/results/results_baseline.rds")
 
 
-# 2) Quantile Plots 
+
+df = computeDatasetForAnalysis(dirs, algorithms, seq(0, 4, by = 0.25))
+
+# TODO: Compute brackets to visualize them
+# brackets = df[, .SD[new_bracket], by = c("algorithm")]
+# brackets$budget_cum_log = log(brackets$budget_cum / 52, 10)
+# brackets = brackets[, .SD[which.min(job.id)], by = c("algorithm")]
 
 
-# 3) epsilon-Plots (budget epsilon to best performance)
+for (dir in dirs) {
+  p = plotAggregatedLearningCurves(dir, init_des = TRUE)
+
+  task.id = strsplit(dir, "/")[[1]][4]
+  idx = which(instances[cfg == "lcbench",]$level == task.id)
+  test = ifelse(instances[idx, ]$test, "test", "train")
+
+  store_path = file.path("figures", "learning_curves", test)
+
+  if (!dir.exists(store_path))
+  	dir.create(store_path)
+
+  ggsave(file.path(store_path, paste0(task.id, ".png")), p, width = 8, height = 4)
+}
 
 
-# 4) Rank comparison plots 
+
+# 2) Same plot, but show ranks and aggregate over all
+
+# For every dataset, we compute a rank, and than we average 
+
+dataset = lapply(dirs, function(d) {
+
+	dfq = readRDS(file.path(d, "learning_curves.rds"))
+
+	return(dfq)
+})
+
+df = do.call(rbind, dataset)
+
+# Compute mean per algorithm for every task
+df = df[, .(mean_perf_per_task = mean(perf_mean)), by = c("task", "algorithm_nexps", "q")]
+
+# Compute ranks per task 
+df = df[, rank_per_task := rank(mean_perf_per_task), by = c("task", "q")]
+
+# Average across tasks
+df = df[, .(mean_rank = mean(rank_per_task)), by = c("q", "algorithm_nexps")]
+
+p = ggplot(data = df, aes(x = q, y = mean_rank, colour = algorithm_nexps)) + geom_line()
+p
 
 
-# 5) Ranks per budget unit --> Learning curves; to aggregate
+# 3) Quantile Plots 
 
+
+# 4) Rank table 
+
+
+# 5) TODO: epsilon-Plots (budget epsilon to best performance)
+
+
+# 6) Compared to random search 
 
 # LATER:
 # - Also run hyperband baseline 
@@ -40,53 +91,18 @@ algorithms = c("hpbster", "mlr3hyperband", "mlrintermbo", "randomsearch")
 
 
 
-for (d in dirs) {
-
-	print(d)
-
-	path = paste0(d, "/", algorithms, ".rds")
-	
-	dfs = lapply(path, function(d) {
-		df = readRDS(d)
-		df_out = lapply(seq(1, nrow(df)), function(i) {
-			dh = df[i, ]
-			dh$result = NULL
-			dh$multi.point = NULL
-			cbind(dh, df[i, ]$result[[1]])
-		})
-		do.call(rbind, df_out)
-	})
-
-	dfs = do.call(rbind, dfs)
-	dfs = as.data.table(dfs)
-
-	dfs[, budget_cum := cumsum(budget), by = c("job.id")]
-	dfs[, nexps := length(unique(job.id)), by = c("problem", "task", "algorithm", "algorithm_type", "full_budget")]
-
-	any(dfs$nexps < 30)
-
-	dfs[algorithm == "hpbster", ]$algorithm = "bohb"
-	dfs[full_budget == TRUE, ]$algorithm = paste0(dfs[full_budget == TRUE, ]$algorithm, "_full_budget")
-	dfs$budget_cum_log = log(dfs$budget_cum / 52, 10)
 
 
-	# Compute quantiles 
-	quantiles = seq(0, 4, by = 0.25)
-	df_sub = lapply(quantiles, function(q) {
-		cbind(dfs[budget_cum_log <= q, .SD[which.max(performance)], by = c("job.id")], q = q)
-	})
-	df_sub = do.call(rbind, df_sub)
-	df_sub = df_sub[, .(perf_mean = mean(performance), perf_sd = sd(performance)), by = c("q", "algorithm", "task")]
+# TODO: 
+# 1) Learning Curve Plots
+# - ADD 
+# - DONE Mark quantiles for ancertainties
+# - DONE Show task
+# - DONE Mark end of the initial design 
+# - DONE: Distinguish between train and test instances 
 
-	p = ggplot(data = df_sub, aes(x = q, y = perf_mean, colour = algorithm, fill = algorithm)) 
-	p = p + geom_line()
-	p = p + geom_ribbon(aes(ymin = perf_mean - perf_sd, ymax = perf_mean + perf_sd), alpha = 0.1, colour = NA)
-	p = p + theme_bw()
-	p = p + scale_x_continuous(breaks = seq(0, 4, by = 1),
-	        labels= 10^seq(0, 4))
-	p = p + xlab("Budget spent (in multiples of full budget)")
-	p = p + ylab("Mean validation accuracy")
+# - DISCUSS: Time amount; it is becoming a lot! Parallel analyzation
+# - TODO Mark Brackets 
+# - Analyze why mlr3hyperband works so well
+# - TODO: Stages look strange in bohb! 
 
-	ggsave(file.path("figures/learning_curves", paste0(strsplit(d, "/")[[1]][3], ".png")), p, width = 8, height = 4)
-
-}
