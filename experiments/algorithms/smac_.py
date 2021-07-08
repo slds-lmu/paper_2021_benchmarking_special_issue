@@ -33,8 +33,7 @@ import dask
 from distributed import Client
 
 class worker():
-    def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, full_budget, total_budget, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, full_budget, budget_on_log, total_budget):
         base = importr("base")
         self.problem = problem 
         self.task = task
@@ -45,6 +44,7 @@ class worker():
         self.maxbudget = maxbudget
         self.full_budget = full_budget
         self.total_budget = total_budget
+        self.budget_on_log = budget_on_log
         self.mfsurrogates = importr("mfsurrogates")
         self.session = onnxruntime.InferenceSession("experiments/problems/" + problem + "/model.onnx")
         self.param_set = base.readRDS("experiments/problems/" + problem + "/param_set.rds")
@@ -67,9 +67,9 @@ class worker():
             cs = json.read(json_string)
         if not self.full_budget: # Tune over the budget parameter instead of setting it to the full budget
             if self.problem in ["lcbench", "nb301"]:
-                budget = UniformIntegerHyperparameter("epoch", self.minbudget, self.maxbudget, default_value=self.maxbudget)
+                budget = UniformIntegerHyperparameter(self.budget_param, self.minbudget, self.maxbudget, default_value=self.maxbudget, log = self.budget_on_log)
             if self.problem == "rbv2_super":
-                budget = UniformFloatHyperparameter(self.budget_param, self.minbudget, self.maxbudget, default_value = self.maxbudget)
+                budget = UniformFloatHyperparameter(self.budget_param, self.minbudget, self.maxbudget, default_value = self.maxbudget, log = self.budget_on_log)
             cs.add_hyperparameters([budget])
         return(cs)
     def compute(self, config):
@@ -104,7 +104,7 @@ def create_new_scenario(old_scen_dict, out_dir, new_budget):
     return({"scenario": new_scenario, "stats": stats, "trajectory": trajectory, "runhistory": runhistory, "incumbent": incumbent})
 
 def main(args): 
-        # args = parser.parse_args(['--problem', 'lcbench', '--tempdir', 'reg_temp/external/', '--task', '3945', '--budget_param', 'epoch', --minbudget', '1', '--maxbudget', '52', '--full_budget', '', '--total_budget', '1000', '--objective', 'val_cross_entropy', '--objective_multiplier', '1'])
+    # args = parser.parse_args(['--problem', 'lcbench', '--tempdir', 'reg_temp/external/', '--task', '3945', '--budget_param', 'epoch', '--minbudget', '1', '--maxbudget', '52', '--full_budget', '', '--total_budget', '1000', '--objective', 'val_cross_entropy', '--objective_multiplier', '1', '--seed', '1', "--budget_on_log", "TRUE"])
     parser = argparse.ArgumentParser(description = "Parsing Arguments")
     parser.add_argument("--problem", type=str, required=True)
     parser.add_argument("--tempdir", type=str, required=True)
@@ -113,25 +113,32 @@ def main(args):
     parser.add_argument("--minbudget", type=int, required=True)
     parser.add_argument("--maxbudget", type=int, required=True) 
     parser.add_argument("--full_budget", type=str, required=True)
+    parser.add_argument("--budget_on_log", type=str, required=True)
     parser.add_argument("--total_budget", type=int, required=True) 
     parser.add_argument("--objective", type=str, required=True)
     parser.add_argument("--objective_multiplier", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
+
     # parser.add_argument("--multi.point", type=int, required=True)
     args = parser.parse_args(args)
-
-    print(args.full_budget)
 
     if args.full_budget == 'TRUE':
         args.full_budget = True
     else: 
         args.full_budget = False
 
+    if args.budget_on_log == 'TRUE':
+        args.budget_on_log = True
+    else: 
+        args.budget_on_log = False
+
+
     logging.basicConfig(level=logging.INFO) 
 
-    w = worker(args.problem, args.task, args.budget_param, args.objective, args.objective_multiplier, args.minbudget, args.maxbudget, args.full_budget, args.total_budget)
+    w = worker(problem=args.problem, task=args.task, budget_param=args.budget_param, objective=args.objective, objective_multiplier=args.objective_multiplier, minbudget = args.minbudget, maxbudget=args.maxbudget, full_budget=args.full_budget, budget_on_log=args.budget_on_log, total_budget=args.total_budget)
 
     cs = w.get_configspace()
+
     fun = w.compute
 
     # Number of function evaluations (need to restart in case budget parameter is not set to a fixed value)
@@ -197,4 +204,6 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+
 

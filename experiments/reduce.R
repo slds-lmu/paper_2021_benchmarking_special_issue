@@ -3,19 +3,19 @@ source("experiments/config.R")
 # Load real registry
 reg = loadRegistry("reg", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point"))
 
 # Reduce all results in separate folders 
 
 get_runtime_overview = function(tab) {
 	res = reduceResultsDataTable(ijoin(tab, findDone()), function(x) as.numeric(x$runtime, units = "secs"))
-	bla = ijoin(res, tab)[, c("result", "algorithm", "full_budget", "algorithm_type")]
+	bla = ijoin(res, tab)[, c("result", "algorithm", "full_budget", "algorithm_type", "multi.point")]
 
 	return(bla)
 }
 
-runtimes = get_runtime_overview(tab)
-runtimes[, mean(result[[1]]) / 60, by = c("algorithm", "algorithm_type", "full_budget")]
+runtimes = get_runtime_overview(tab[algorithm == "smac", ])
+runtimes[, mean(result[[1]]) / 60, by = c("algorithm", "algorithm_type", "full_budget", "multi.point")]
 saveRDS(runtimes, "experiments/results/runtimes.rds")
 
 
@@ -135,13 +135,3 @@ for (tsk in tasks) {
 
 	saveRDS(df, file.path(path, prob, tsk, paste0("result_sum.rds")))
 }
-
-
-
-
-
-
-
-
-
-

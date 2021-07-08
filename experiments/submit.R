@@ -9,7 +9,7 @@ resources.serial.default = list(
 # Load real registry
 reg = loadRegistry("reg", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point"),)
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point", "log_scale"))
 
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
@@ -39,9 +39,9 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
 
 # 3. BOHB
-# Time: ~ 20 minutes
+# Time: ~ 60 minutes
 tosubmit_hpbster = tosubmit[algorithm_type == "bohb", ]
-tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 100)
+tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 310)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
@@ -68,10 +68,13 @@ submitJobs(tosubmit_hb, resources = resources.serial.default)
 # Time: ~ 4 minutes 
 # Only send half of the tasks for now
 tasks = unique(tosubmit$task)[1:15]
-tosubmit_smac = tosubmit[task %in% tasks & algorithm == "smac", ]
-tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 9)
+tosubmit_smac = tosubmit[task %in% tasks & algorithm == "smac" & multi.point == 1, ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+# Only run 5 replications for now
+tosubmit_smac[, repl := 1:.N, by = c("problem", "task", "full_budget")]
+tosubmit_smac = tosubmit_smac[repl <= 10, ]
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 10)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
-submitJobs(tosubmit_smac, resources = resources.serial.default)
+submitJobs(tosubmit_smac[chunk == 1, ], resources = resources.serial.default)
 
 
 

@@ -2,7 +2,7 @@
 
 # Run smac in a deterministic fashion 
 
-smac = function(data, job, instance, full_budget, multi.point, ...) {
+smac = function(data, job, instance, full_budget, log_scale = TRUE, multi.point = 1L, ...) {
 
 	ins = instance$ins$clone()
 	objective = ins$objective
@@ -18,18 +18,17 @@ smac = function(data, job, instance, full_budget, multi.point, ...) {
 	budget_lower = search_space_old$params[[budget_idx]]$lower
 	budget_upper = search_space_old$params[[budget_idx]]$upper
 
-	# total budget the run is given
-	# Compute the total budget (such that we can reconstruct parallelization afterwards)
-	total_budget = ins$terminator$param_set$values$budget * PARALLELIZATION
+	total_budget = ins$terminator$param_set$values$budget 
 
-	job = list(external.dir = ".", seed = 1)
-	full_budget = TRUE
+	# For the multipoint variant, we increase the budget by the parallelization factor
+	total_budget = total_budget * multi.point
 
 	start_t = Sys.time()
     out = system2('python', c("experiments/algorithms/smac_.py", 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 
     	" --task ", instance$task, " --budget_param ",  budget_id, 
     	" --minbudget ", budget_lower, " --maxbudget ", budget_upper, 
+    	" --budget_on_log ", log_scale, 
     	" --full_budget ", full_budget, " --total_budget ", total_budget, 
     	" --objective ", cid, " --objective_multiplier ", objective_multiplier, 
     	" --seed ", job$seed))

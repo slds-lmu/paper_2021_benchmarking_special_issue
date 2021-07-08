@@ -33,7 +33,7 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
 
 	# total budget the run is given
 	# Compute the total budget * 32 (such that we can reconstruct parallelization afterwards)
-	fullbudget = ins$terminator$param_set$values$budget # * PARALLELIZATION
+	fullbudget = ins$terminator$param_set$values$budget * PARALLELIZATION
 
 	start_t = Sys.time()
     out = system2('python3', c("experiments/algorithms/hpbster.py",  "--alg", algorithm_type, 

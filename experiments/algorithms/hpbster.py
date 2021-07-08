@@ -202,9 +202,9 @@ def main(args):
         w = lcbench(task = args.task, objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1', nameserver_port = randport, run_id='example1')
     w.run(background=True)
     if args.alg == "hb":
-        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
-    if args.alg == "bohb":
         alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
+    if args.alg == "bohb":
+        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
 
     while total_budget_spent < args.fullbudget:
         res = alg.run(n_iterations=max_SH_iter) # hand over number of brackets here
