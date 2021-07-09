@@ -1,0 +1,23 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(data.table)
+library(ggplot2)
+```
+
+# 1 - Learning Curves
+
+```{r}
+problem = "lcbench"
+dirs = list.dirs("results/lcbench")
+dirs = dirs[2:length(dirs)]
+```
+
+```{r}
+
+```
+

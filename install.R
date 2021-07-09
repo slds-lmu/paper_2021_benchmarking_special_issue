@@ -2,4 +2,5 @@ install.packages(c("remotes", "mlr3", "mlr3learners", "mlr3pipelines", "ranger",
 remotes::install_github("mlr-org/bbotk@irace")
 remotes::install_github("mlr-org/paradox@expression_params")
 remotes::install_github("mlr-org/miesmuschel@multiobjective_hb")
+remotes::install_github("mlr-org/mlr3extralearners@cubist_mars")
 remotes::install_github("compstat-lmu/paper_2021_multi_fidelity_surrogates")

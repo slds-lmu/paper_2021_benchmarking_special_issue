@@ -3,19 +3,19 @@ source("experiments/config.R")
 # Load real registry
 reg = loadRegistry("reg", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point"))
 
 # Reduce all results in separate folders 
 
 get_runtime_overview = function(tab) {
 	res = reduceResultsDataTable(ijoin(tab, findDone()), function(x) as.numeric(x$runtime, units = "secs"))
-	bla = ijoin(res, tab)[, c("result", "algorithm", "full_budget", "algorithm_type")]
+	bla = ijoin(res, tab)[, c("result", "algorithm", "full_budget", "algorithm_type", "multi.point")]
 
 	return(bla)
 }
 
-runtimes = get_runtime_overview(tab)
-runtimes[, mean(result[[1]]), by = c("algorithm", "algorithm_type", "full_budget")]
+runtimes = get_runtime_overview(tab[algorithm == "smac", ])
+runtimes[, mean(result[[1]]) / 60, by = c("algorithm", "algorithm_type", "full_budget", "multi.point")]
 saveRDS(runtimes, "experiments/results/runtimes.rds")
 
 
@@ -41,10 +41,8 @@ for (prob in c("lcbench")) {
 
 			notdone = ijoin(tored, findNotDone())
 
-			if (is.null(status_summary)) {
-				status_summary = rbind(status_summary, data.table(problem = prob, task = tsk, algorithm = algo, done = nrow(toreduce), open = nrow(notdone)))
-			}
-
+			status_summary = rbind(status_summary, data.table(problem = prob, task = tsk, algorithm = algo, done = nrow(toreduce), open = nrow(notdone)))
+			
 			if (nrow(toreduce) > 0) {
 
 				print(paste("Reducing: ", algo, "for task", tsk))
@@ -53,7 +51,7 @@ for (prob in c("lcbench")) {
 					x$archive[, c("budget", "performance")]
 				})
 
-				if (algo == "hpbster") {
+				if (algo %in% c("hpbster", "smac")) {
 
 					library(reticulate)
 					pd = import("pandas")
@@ -66,10 +64,16 @@ for (prob in c("lcbench")) {
 						path = file.path(reg$file.dir, "external", jid, "results.pkl")
 
 						if (file.exists(path)) {
-							df = pd$read_pickle(path)$get_pandas_dataframe()
-							df = as.data.table(df)
 
-							names(df)[which(names(df) == "loss")] = "performance"
+							if (algo == "hpbster"){
+								df = pd$read_pickle(path)$get_pandas_dataframe()
+								df = as.data.table(df)
+								names(df)[which(names(df) == "loss")] = "performance"
+							} 
+							if (algo == "smac") {
+								df = as.data.table(pd$read_pickle(path))
+							}
+
 
 							if (tab[job.id == jid, ]$objectives == "val_accuracy")
 								df$performance = (-1) * df$performance
@@ -101,7 +105,7 @@ for (prob in c("lcbench")) {
 	}
 }
 
-saveRDS(status_summary, "experiments/results/runtimes.rds")
+saveRDS(status_summary, "experiments/results/status_summary.rds")
 
 
 
@@ -112,10 +116,6 @@ res = reduceResultsDataTable(toreduce)
 res = ijoin(tab, res)
 
 toupdate = res[which(res$algorithm_type %in% c("bohb", "hb")), ]$job.id
-
-
-
-
 
 for (tsk in tasks) {
 
@@ -135,13 +135,3 @@ for (tsk in tasks) {
 
 	saveRDS(df, file.path(path, prob, tsk, paste0("result_sum.rds")))
 }
-
-
-
-
-
-
-
-
-
-
