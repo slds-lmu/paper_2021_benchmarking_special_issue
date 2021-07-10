@@ -30,32 +30,46 @@ readProblem = function(data, job, task, objectives, ...) {
   param_ids = dom$ids()
   budget_param = data$budget_param
 
-  if (length(budget_param) > 1) {
-    # modify the param_set
-    for (i in seq(2, length(budget_param))) {
-      dom$params[[param_ids[budget_param[i]]]]$tags = paste0("budget_", i)
-    }
+  # For the randombot data we drop repls as budget parameter 
+  if (data$id == "RBv2_super") {
+    budget_param_all = budget_param
+    budget_param = "trainsize"
   }
-
+      
   budget_lower = dom$params[[budget_param]]$lower
   budget_upper = dom$params[[budget_param]]$upper
-
 
   # We give a total budget of lbmax * 30 * d  
   BUDGET_MAX = B_MULTIPLIER * length(param_ids) * budget_upper
 
-  if (is.na(task)) {
-    obj = data$get_objective(target_variables = objectives)   
+  if (data$model_name == "branin") {
+    obj = data$get_objective()
     task = NA
   } else {
-    obj = data$get_objective(task = task, target_variables = objectives)  
-  }   
+    if (is.na(task)) {
+      obj = data$get_objective(target_variables = objectives)   
+      task = NA
+    } else {
+      obj = data$get_objective(task = task, target_variables = objectives)  
+    }    
+  }
     
   if (nobjectives == 1) {
     ins = OptimInstanceSingleCrit$new(
       objective = obj,
       terminator = trm("budget", budget = BUDGET_MAX, aggregate = sum) 
     )
+
+    if (data$id == "RBv2_super") {
+      ts = list(as.integer(ins$search_space$params[[setdiff(budget_param_all, budget_param)]]$upper))
+      names(ts) = setdiff(budget_param_all, budget_param)
+      ins$search_space$values = c(ins$search_space$values, ts)
+      ins$search_space$params[[budget_param]]$lower = 3^(-3)
+    }
+
+    if (data$id == "Branin") {
+      ins$search_space$params[[budget_param]]$lower = 3^(-4)
+    }
   } 
 
   if (nobjectives > 1) {

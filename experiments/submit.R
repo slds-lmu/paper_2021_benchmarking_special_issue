@@ -7,14 +7,14 @@ resources.serial.default = list(
 )
 
 # Load real registry
-reg = loadRegistry("reg", writeable = TRUE)
+reg = loadRegistry("reg_branin", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point", "log_scale"))
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
 
-tosubmit = tab[problem == "lcbench", ]
+tosubmit = tab[problem == "branin", ]
 tosubmit = ijoin(tosubmit, findNotDone())
 tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 

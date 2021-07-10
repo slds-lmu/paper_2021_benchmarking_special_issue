@@ -5,17 +5,19 @@ reg = loadRegistry("reg_temp", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
-prob = "rbv2_super"
+prob = "lcbench"
 
 
 BUDGET_UPPER = list(
 	"lcbench" = 52, 
-	"nb301" = 98
+	"nb301" = 98,
+	"branin" = 1
 )
 
 MAX_BUDGETS = list(
 	"lcbench" = 52 * B_MULTIPLIER * 8, 
-	"nb301" = 35 * B_MULTIPLIER * 98
+	"nb301" = 35 * B_MULTIPLIER * 98,
+	"branin" = 1 * B_MULTIPLIER * 3
 )
 
 
@@ -32,7 +34,6 @@ MAX_BUDGETS[[prob]] * 4
 out = testJob(tab[algorithm == "randomsearch_full_budget" & problem == prob, ][1, ]) 
 assert_true(all(out$achive$budget == BUDGET_UPPER[[prob]]))
 assert_true(sum(out$archive$budget) >= MAX_BUDGETS[[prob]] * PARALLELIZATION)
-
 
 
 ## mlr3hyperband
@@ -57,7 +58,7 @@ assert_true(sum(out$archive$budget) >= MAX_BUDGETS[[prob]])
 
 
 ## hpbster_hb / bohb
-jid = tab[algorithm == "hpbster_bohb" & problem == prob, ][1, ]$job.id
+jid = tab[algorithm == "hpbster_hb" & problem == prob, ][1, ]$job.id
 out = testJob(jid) 
 # Read the outcome
 library(reticulate)

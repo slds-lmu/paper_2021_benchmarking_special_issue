@@ -20,7 +20,7 @@ for (i in seq_along(surr_data)) {
 		data = surr_data[[i]], 
 		fun = readProblem, # sets up the optimization instances 
 		reg = reg, 
-		seed = i
+		seed = 123L
 	)	
 }
 
