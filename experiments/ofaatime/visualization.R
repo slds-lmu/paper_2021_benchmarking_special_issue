@@ -135,7 +135,7 @@ visualize_results = function(results, results_baseline, results_min_max, tag, la
 # visualization based on mean mean normalized regret for surrogate detailed
 visualize_results_surrogate_detailed = function(results, lambda) {
   tag = "surrogate_learner"
-  default = lambda[[tag]]
+  default = lambda[[tag]][[1L]][[1L]]$id
   results_min_max = map_dtr(c("lcbench", "rbv2_super"), function(config) {
     target_variable = if(config == "lcbench") "val_cross_entropy" else "logloss"
     results_min_max = setNames(results[cfg == config, min(get(target_variable)), by = .(repl, level)], c("repl", "level", "y_min"))

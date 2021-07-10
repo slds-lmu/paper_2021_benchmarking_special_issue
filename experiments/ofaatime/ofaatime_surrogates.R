@@ -61,7 +61,7 @@ instances_plan[, targets := ifelse(cfg == "lcbench", "val_cross_entropy", "loglo
 instances_plan[, lower := ifelse(cfg == "lcbench", 1, 3 ^ (-3))]
 instances_plan[, upper := ifelse(cfg == "lcbench", 52, 1)]
 instances_plan[, id_plan := 1:.N]
-instances_plan
+#instances_plan = instances_plan[cfg == "lcbench"]  # FIXME: only lcbench for gp comparison
 
 # add problems
 prob_designs = imap(split(instances_plan, instances_plan$id_plan), function(instancex, name) {
@@ -88,19 +88,25 @@ kknn_local = kknn$clone(deep = TRUE)
 kknn_local$param_set$values$regr.kknn.k = 1
 kknn_local$id = paste0(kknn_local$id, ".1")
 
+gp = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.km", optim.method = "gen", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
+
+no = lrn("regr.featureless", id = "surrogate_turned_off")
+
 learners = list(
-  ranger = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.ranger", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
-  knn = kknn,
-  kknn_local = kknn_local,
-  cubist = GraphLearner$new(imputepl_cubist %>>% mlr3::lrn("regr.cubist", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
-  mars = GraphLearner$new(imputepl_mars %>>% mlr3::lrn("regr.mars", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
+  no = no,
+  #gp = gp,
+  #ranger = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.ranger", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
+  #knn = kknn,
+  #kknn_local = kknn_local,
+  #cubist = GraphLearner$new(imputepl_cubist %>>% mlr3::lrn("regr.cubist", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate"))),
+  #mars = GraphLearner$new(imputepl_mars %>>% mlr3::lrn("regr.mars", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
 )
 learners = lapply(learners, function(x) { class(x) <- c("LearnerRegr", class(x)) ; x })
 
 lambda$surrogate_learner = list(list(lambda$surrogate_learner)) # batchtools complains otherwise
 
-lambda$random_interleave_fraction = 0.8 # 80% surrogate usage
-lambda$random_interleave_fraction.end = 0.8 # 80% surrogate usage
+lambda$random_interleave_fraction = 0.8  # 80% surrogate usage
+lambda$random_interleave_fraction.end = 0.8  # 80% surrogate usage
 
 id = "surrogate_learner"
 
