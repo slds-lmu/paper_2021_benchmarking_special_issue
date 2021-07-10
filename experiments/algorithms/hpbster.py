@@ -141,8 +141,9 @@ class rbv2_super(Worker):
                 'loss' (scalar)
                 'info' (dict)
         """
-        config.update({"OpenML_task_id": self.task})
+        config.update({"task_id": self.task})
         config.update({"trainsize": int(budget)})  # FIXME: budget trafo to match epoch range and int
+        config.update({"repl": 10})  # Note: we have to use a fixed repl; 10 is the default
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
         li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       
@@ -158,7 +159,7 @@ class rbv2_super(Worker):
                 })
     @staticmethod
     def get_configspace():
-        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_lcbench_drop_OpenML_task_id_epoch.json'            , 'r') as f:
+        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_rbv2_super_drop_trainsize_repl_task_id.json', 'r') as f:
             json_string = f.read()
             cs = json.read(json_string)
         return(cs)
