@@ -1,4 +1,4 @@
-mlrintermbo = function(data, job, instance, full_budget, surrogate, multi.point, log_scale) {
+mlrintermbo = function(data, job, instance, full_budget, surrogate, multi.point = 1L, log_scale = TRUE) {
 
 	ins = instance$ins
 

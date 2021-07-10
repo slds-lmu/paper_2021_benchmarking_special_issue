@@ -1,4 +1,4 @@
-randomsearch = function(data, job, instance, full_budget, log_scale) {
+randomsearch = function(data, job, instance, full_budget, log_scale = TRUE) {
 
 	ins = instance$ins$clone()
 
@@ -51,3 +51,11 @@ randomsearch = function(data, job, instance, full_budget, log_scale) {
 
     return(list(archive = archive, runtime = end_t - start_t))
 }
+
+
+# TODO: 
+# * Wie machen wir die Aggregation?
+# * Call mit Lennart um das Setup gerade zu ziehen und zu vergleichen  
+# * Paralleles Setup hinbekommen 
+# * Wiederholungen hochdrehen, Random Bot laufen lassen 
+
