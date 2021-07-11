@@ -7,7 +7,7 @@ resources.serial.default = list(
 )
 
 # Load real registry
-reg = loadRegistry("reg_sequential", writeable = TRUE)
+reg = loadRegistry("reg_branin", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
@@ -102,20 +102,6 @@ resubmit = out[which(!records.exist), ]
 resubmit$chunk = chunk(resubmit$job.id, chunk.size = 120)
 
 submitJobs(resubmit[chunk %in% 1:2, ], resources = resources.serial.default)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

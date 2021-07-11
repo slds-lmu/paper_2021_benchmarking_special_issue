@@ -11,7 +11,7 @@ source("experiments/algorithms/hpbster.R")
 source("experiments/algorithms/smac_.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "TEST"
+SETUP = "REAL"
 
 switch(SETUP, 
 	"TEST" = {
