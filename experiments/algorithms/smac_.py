@@ -81,10 +81,11 @@ class worker():
         if self.full_budget: # Set the budget parameter to the full budget 
             config.update({self.budget_param: self.maxbudget}) 
         if self.problem in ["lcbench", "rbv2_super", "nb301"]:
-            if self.problem in ['rbv2_super']: 
+            if self.problem in ['lcbench']: 
                 config.update({"OpenML_task_id": self.task}) 
             if self.problem in ['rbv2_super']:
-                config.update({"task_id": self.task}) 
+                config.update({"task_id": self.task})
+                config.update({"repl": 10})  # Note: we have to use a fixed repl; 10 is the default
             xdt = pd.DataFrame.from_dict([config])
             xdt = pandas2ri.py2rpy(xdt)
             li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       

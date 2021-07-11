@@ -5,19 +5,21 @@ reg = loadRegistry("reg_temp", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
-prob = "lcbench"
+prob = "rbv2_super"
 
 
 BUDGET_UPPER = list(
 	"lcbench" = 52, 
 	"nb301" = 98,
-	"branin" = 1
+	"branin" = 1, 
+	"rbv2_super" = 1
 )
 
 MAX_BUDGETS = list(
 	"lcbench" = 52 * B_MULTIPLIER * 8, 
 	"nb301" = 35 * B_MULTIPLIER * 98,
-	"branin" = 1 * B_MULTIPLIER * 3
+	"branin" = 1 * B_MULTIPLIER * 3, 
+	"rbv2_super" = 1 * B_MULTIPLIER * 41
 )
 
 
@@ -58,7 +60,7 @@ assert_true(sum(out$archive$budget) >= MAX_BUDGETS[[prob]])
 
 
 ## hpbster_hb / bohb
-jid = tab[algorithm == "hpbster_hb" & problem == prob, ][1, ]$job.id
+jid = tab[algorithm == "hpbster_bohb" & problem == prob, ][1, ]$job.id
 out = testJob(jid) 
 # Read the outcome
 library(reticulate)

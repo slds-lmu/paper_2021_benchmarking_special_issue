@@ -7,21 +7,21 @@ resources.serial.default = list(
 )
 
 # Load real registry
-reg = loadRegistry("reg_branin", writeable = TRUE)
+reg = loadRegistry("reg_sequential", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
 
-tosubmit = tab[problem == "branin", ]
+tosubmit = tab[problem == "rbv2_super", ]
 tosubmit = ijoin(tosubmit, findNotDone())
 tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
 
 # 1. RANDOMSERACH 
 # Time: ~ 4 minutes
-tosubmit_rs = tosubmit[algorithm == "randomsearch" & full_budget == TRUE, ]
+tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ]
 tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 350)
 
 submitJobs(tosubmit_rs, resources = resources.serial.default)
@@ -31,7 +31,7 @@ submitJobs(tosubmit_rs, resources = resources.serial.default)
 # 2. mlrintermbo 
 # Time (full budget = TRUE): 	 min
 # Time (full_budget = FALSE): 	3.85 h
-tosubmit_mbo = tosubmit[algorithm == "mlrintermbo" & full_budget == TRUE, ]
+tosubmit_mbo = tosubmit[algorithm == "mlrintermbo_full_budget", ]
 tosubmit_mbo$chunk = chunk(tosubmit_mbo$job.id, chunk.size = 15)
 
 submitJobs(tosubmit_mbo, resources = resources.serial.default)

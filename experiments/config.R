@@ -11,7 +11,7 @@ source("experiments/algorithms/hpbster.R")
 source("experiments/algorithms/smac_.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
@@ -30,7 +30,7 @@ switch(SETUP,
 		# do never overwrite registry
 		OVERWRITE = FALSE
 		# termination criterion for each run
-		registry_name = "reg_branin"
+		registry_name = "reg_sequential"
 		# replications
 		REPLS = 30L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
@@ -79,7 +79,7 @@ surr_data = lapply(surrogates, function(surr) {
 	else 
 		cfg$setup()
 	# Store codomain manually for the python scripts
-	saveRDS(cfg$codomain, file.path(SURROGATE_LOCATION, surr, "codomain.rds"))
+	# saveRDS(cfg$param_set, file.path(SURROGATE_LOCATION, surr, "param_set"))
 
 	return(cfg)
 })
@@ -88,8 +88,8 @@ names(surr_data) = surrogates
 
 pdes = list(# nb301 = data.table(objectives = c("val_accuracy")), 
 			lcbench = data.table(objectives = c("val_cross_entropy")), 
-			rbv2_super = data.table(objectives = c("logloss")), 
-			branin = data.table(objectives = c("y"))
+			branin = data.table(objectives = c("y")),
+			rbv2_super = data.table(objectives = c("logloss")) 
 			)
 
 
@@ -128,7 +128,7 @@ ALGORITHMS = list(
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), # log-scale not relevant
     mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
     mlrintermbo_full_budget = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE)), 
-    mlrintermbo_full_budget_32 = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE, log_scale = TRUE, multi.point = 32L)), 
+    # mlrintermbo_full_budget_32 = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE, log_scale = TRUE, multi.point = 32L)), 
     hpbster_hb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
     hpbster_bohb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "bohb")), # log-scale not relevant
     # hpbster_bohb_32 = list(...), # TODO: Variant that is comparable to the parallelized scenario
@@ -143,7 +143,7 @@ des = lapply(ALGORITHMS, function(x) x$ades)
 # instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))
 # instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_cross_entropy"))
 # instance = readProblem(surr_data[["rbv2_super"]], 1, "1040", objectives = c("logloss"))
-instance = readProblem(surr_data[["branin"]], 1, NA, objectives = c("y"))
+# instance = readProblem(surr_data[["branin"]], 1, NA, objectives = c("y"))
 
 # NB301 takes approx. 44 minutes 
 

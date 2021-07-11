@@ -143,8 +143,9 @@ class rbv2_super(Worker):
                 'info' (dict)
         """
         config.update({"task_id": self.task})
-        config.update({"budget": float(budget)}) 
-        xdt = pd.DataFrame.from_dict([budget])
+        config.update({"trainsize": int(budget)})  # FIXME: budget trafo to match epoch range and int
+        config.update({"repl": 10})  # Note: we have to use a fixed repl; 10 is the default
+        xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
         li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       
         li = { key : li_.rx2(key) for key in li_.names }
