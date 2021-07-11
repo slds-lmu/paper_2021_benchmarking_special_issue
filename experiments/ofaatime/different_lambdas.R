@@ -68,8 +68,8 @@ instances_plan[, budget_par := ifelse(cfg == "lcbench", "epoch", "trainsize")]
 instances_plan[, lower := ifelse(cfg == "lcbench", 1, 3 ^ (-3))]
 instances_plan[, upper := ifelse(cfg == "lcbench", 52, 1)]
 instances_plan[, id_plan := 1:.N]
+instances_plan = rbind(instances_plan, data.table(cfg = "branin", test = FALSE, level = NA_character_, targets = "y", budget_par = "fidelity", lower = 0.001, upper = 1, id_plan = 125))
 instances_plan
-instances_plan = rbind(instances_plan, data.table(cfg = "branin", test = FALSE, level = NA_character_, targets = "y", budget_par = "fidelity", lower = 0.001, upper = 0.001, id_plan = 125))
 
 # add problems
 prob_designs = imap(split(instances_plan, instances_plan$id_plan), function(instancex, name) {
