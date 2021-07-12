@@ -39,8 +39,8 @@ focussearch = function(data, job, instance, full_budget, log_scale = TRUE) {
 
   # some heuristics in the case of using full budget
   n_restarts = 3L
-  maxit = 30L
-  n_points = as.integer(floor(budget / (ins$search_space$params[[bid]]$upper * n_restarts * maxit)))
+  maxit = 20L
+  n_points = ceiling(budget / (ins$search_space$params[[bid]]$upper * n_restarts * maxit))
 
   start_t = Sys.time()
   opt("focus_search", n_points = n_points, maxit = maxit)$optimize(ins)
