@@ -140,7 +140,7 @@ resources.serial.default = list(
 )
 
 all_jobs = findJobs()
-all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)]
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = ceiling(NROW(all_jobs) / 100L))]
 submitJobs(all_jobs, resources = resources.serial.default)
 
 ################################################################################# Analysis and Plots ##################################################################################################

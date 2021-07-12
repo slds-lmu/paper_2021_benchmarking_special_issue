@@ -1,6 +1,7 @@
 library(data.table)
 library(paradox)
 library(mlr3misc)
+library(mlr3extralearners)
 root = here::here()
 workdir = file.path(root, "irace/data/surrogates")
 
@@ -212,11 +213,11 @@ for (cfg in c("lcbench", "rbv2_super")) {
 
 # Standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 24L * 2L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
+  walltime = 3600L * 24L * 1L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
 )
 
 all_jobs = findJobs()
-all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)]
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = ceiling(NROW(all_jobs) / 100L))]
 submitJobs(all_jobs, resources = resources.serial.default)
 
 ################################################################################# Analysis and Plots ##################################################################################################
