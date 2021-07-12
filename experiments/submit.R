@@ -23,13 +23,13 @@ tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 # Time: ~ 4 minutes (lcbench)
 #       ~ x minutes (rbv2_super)
 tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ]
-tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 350)
+tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 32)
 
 submitJobs(tosubmit_rs, resources = resources.serial.default)
 
 
 
-# 2. mlrintermbo 
+# 2. mlrintermbo (NOT SUBMITTED YET)
 # Time (full budget = TRUE): 	 min
 # Time (full_budget = FALSE): 	3.85 h
 tosubmit_mbo = tosubmit[algorithm == "mlrintermbo_full_budget", ]
@@ -59,7 +59,7 @@ submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 # 5. mlr3hyperband
 # Time: ~ 4 minutes 
 tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
-tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 350)
+tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 50)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
 
@@ -68,7 +68,7 @@ submitJobs(tosubmit_hb, resources = resources.serial.default)
 # 6. smac
 # Time: ~ 4 minutes 
 tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 50)
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 25)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
@@ -126,10 +126,10 @@ submitJobs(resubmit[chunk %in% 1:2, ], resources = resources.serial.default)
 
 ### - Registry: reg_sequential (LRZ)
 ### - Test run (to get the time): 
-###		- randomsearch_full_budget: 12391; x minutes 
+###		- randomsearch_full_budget: 12391; 90 minutes 
 ###		- hpbster_hb: 3 Minutes 
 ###		- hpbster_bohb: 20 Minutes 
-###		- smac_full_budget
+###		- smac_full_budget: 120 minutes
 ### - Completed: 
 ###		-
 ### - Submitted: 
