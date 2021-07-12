@@ -1,7 +1,9 @@
-# changes
-# use latest (31.05) mfsurrogates package and surrogate models
-# filter_factor_* to 1000
-# use graph learners which imputes missing values in smashy 
+# Log:
+# * latest mfsurrogates package version (31.05)
+# * new mfsurrogates models
+# * set upper bound of `filter_factor_*` parameters to 1000 in irace search space
+# * convert ranger and kknn surrogate learner to graph learners that impute missing values
+# * fix missing dependencies in smashy search space
 
 set.seed(7345)
 source("./irace/optimization.R")
