@@ -45,7 +45,9 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
   budget_limit = 1L * search_space$length * budget_factor * budget_upper
 
   # call smashy with configuration parameter in xs
+	start_t = Sys.time()
   instance_ = mlr3misc::invoke(opt_objective, objective = objective, budget_limit = budget_limit, search_space = search_space, .args = xs)
+	end_t = Sys.time()
 
   cols = c(instance$targets, instance$budget_par)
 
@@ -54,6 +56,8 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
   res$task = instance$level
   res[, eval_nr := seq_len(.N)]
   res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))]  # FIXME: should introduce max_min multiplicator if we do not minimize
+
+  list(archive = res, runtime = end_t - start_t)
 }
 
 library(batchtools)
@@ -67,8 +71,8 @@ instances_plan[, targets := ifelse(cfg == "lcbench", "val_cross_entropy", "loglo
 instances_plan[, budget_par := ifelse(cfg == "lcbench", "epoch", "trainsize")]
 instances_plan[, lower := ifelse(cfg == "lcbench", 1, 3 ^ (-3))]
 instances_plan[, upper := ifelse(cfg == "lcbench", 52, 1)]
+instances_plan = rbind(instances_plan, data.table(cfg = "branin", test = FALSE, level = NA_character_, targets = "y", budget_par = "fidelity", lower = 0.001, upper = 1))
 instances_plan[, id_plan := 1:.N]
-instances_plan = rbind(instances_plan, data.table(cfg = "branin", test = FALSE, level = NA_character_, targets = "y", budget_par = "fidelity", lower = 0.001, upper = 1, id_plan = 125))
 instances_plan
 
 # add problems
@@ -123,19 +127,18 @@ ids_lambda_martin = addExperiments(
 addJobTags(ids_lambda_martin, "lambda_martin")
 
 ids_lambda_lcbench = addExperiments(
-  prob.designs = prob_designs[grepl("lcbench", names(prob_designs))],
+  prob.designs = prob_designs,
   algo.designs = list(eval_ = as.data.table(lambda_lcbench)),
   repls = 30L
 )
 addJobTags(ids_lambda_lcbench, "lambda_lcbench")
 
 #ids_lambda_rbv2_super = addExperiments(
-#  prob.designs = prob_designs[grepl("rbv2_super", names(prob_designs))],
+#  prob.designs = prob_designs,
 #  algo.designs = list(eval_ = as.data.table(lambda_rbv2_super)),
 #  repls = 30L
 #)
 #addJobTags(ids_lambda_rbv2_super, "lambda_rbv2_super")
-
 
 # Standard resources used to submit jobs to cluster
 resources.serial.default = list(
@@ -143,6 +146,126 @@ resources.serial.default = list(
 )
 
 all_jobs = findJobs()
-all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)]
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = ceiling(NROW(all_jobs) / 100L))]
 submitJobs(all_jobs, resources = resources.serial.default)
+
+################################################################################# Analysis and Plots ##################################################################################################
+
+library(data.table)
+library(future)
+library(future.apply)
+library(ggpubr)
+library(batchtools)
+library(mlr3misc)
+library(ggplot2)
+library(ggpubr)
+
+plan(multicore, workers = 16)
+
+reg = loadRegistry(file.dir = "registry_different_lambdas")
+tags = batchtools::getUsedJobTags()
+
+future_lapply(tags, FUN = function(tag) {
+  tagged = findTagged(tag)
+  tmp = map_dtr(tagged$job.id, function(id) {
+    job = makeJob(id)
+    budget_param = job$instance$budget_par
+    archive = loadResult(id)$archive
+    archive[, cumbudget := cumsum(exp(get(budget_param)))]
+    archive[, lambda := tag]
+    archive[, repl := job$repl]
+    archive[, id := job$id]
+    archive
+  }, .fill = TRUE)
+  saveRDS(tmp, paste0("/home/user/ofatime/results_", tag, ".rds"))
+})
+
+tag = tags[1]
+dat = readRDS(paste0("results_", tag, ".rds"))
+setkeyv(dat, c("id", "repl", "cfg", "task"))
+results_min_max = map_dtr(c("lcbench", "rbv2_super", "branin"), function(config) {
+  target_variable = if (config == "lcbench") "val_cross_entropy" else if (config == "rbv2_super") "logloss" else "y"
+  results_min_max = setNames(dat[cfg == config, min(get(target_variable)), by = .(repl, id, task)], c("repl", "id", "task", "y_min"))
+  results_min_max$y_max = dat[cfg == config, max(get(target_variable)), by = .(repl, id, task)]$V1
+  results_min_max$cfg = config
+  results_min_max
+})
+setkeyv(results_min_max, c("id", "repl", "cfg", "task"))
+
+for (tag in tags[-1]) {
+  cat(tag, "\n")
+  dat = readRDS(paste0("results_", tag, ".rds"))
+  setkeyv(dat, c("id", "repl", "cfg", "task"))
+  tmp = map_dtr(c("lcbench", "rbv2_super", "branin"), function(config) {
+    target_variable = if (config == "lcbench") "val_cross_entropy" else if (config == "rbv2_super") "logloss" else "y"
+    results_min_max = setNames(dat[cfg == config, min(get(target_variable)), by = .(repl, id, task)], c("repl", "id", "task", "y_min"))
+    results_min_max$y_max = dat[cfg == config, max(get(target_variable)), by = .(repl, id, task)]$V1
+    results_min_max$cfg = config
+    results_min_max
+  })
+  setkeyv(tmp, c("id", "repl", "cfg", "task"))
+  replace = which(results_min_max$y_min > tmp$y_min)
+  results_min_max$y_min[replace] = tmp$y_min[replace]
+  replace = which(results_min_max$y_max < tmp$y_max)
+  results_min_max$y_max[replace] = tmp$y_max[replace]
+}
+results_min_max[cfg == "branin", y_min :=  0.3979]    # analytical solution
+results_min_max[cfg == "branin", y_max :=  485.3732]  # analytical solution
+results_min_max[, y_diff := y_max - y_min]
+results_min_max[cfg == "branin", task := "1"]
+results_min_max[, id := NULL]
+
+results = map_dtr(paste0("/home/user/ofatime/results_", tags, ".rds"), function(file) {
+  tmp = readRDS(file)
+  tmp
+})
+results[cfg == "branin", task := "1"]
+
+results = map_dtr(unique(results$repl), function(r) {
+  results_ = results[repl == r]
+  results_min_max_ = results_min_max[repl == r]
+  setkeyv(results_, c("cfg", "task"))
+  setkeyv(results_min_max_, c("cfg", "task"))
+
+  results_ = cbind(results_, results_min_max_[results_[, c("cfg", "task")], c("y_min", "y_max", "y_diff")])
+  results_[, normalized_regret := (best - y_min) / (y_diff)]
+  results_mean = setNames(results_[, mean(normalized_regret), by = .(cfg, eval_nr, cumbudget, lambda, repl)], c("cfg", "eval_nr", "cumbudget", "lambda", "repl", "mean_normalized_regret"))
+  setkeyv(results_mean, c("cfg", "eval_nr", "cumbudget", "lambda", "repl"))
+  results_mean
+})
+results[, log_mean_normalized_regret := log(mean_normalized_regret)]
+
+results_mean = setNames(results[, mean(mean_normalized_regret), by = .(cfg, eval_nr, cumbudget, lambda)], c("cfg", "eval_nr", "cumbudget", "lambda", "mean_mean_normalized_regret"))
+results_mean$mean_log_mean_normalized_regret = results[, mean(log_mean_normalized_regret), by = .(cfg, eval_nr, cumbudget, lambda)]$V1
+results_mean$sd_mean_normalized_regret = results[, sd(mean_normalized_regret), by = .(cfg, eval_nr, cumbudget, lambda)]$V1
+results_mean$upper_q_log = results[, quantile(log_mean_normalized_regret, 0.975), by = .(cfg, eval_nr, cumbudget, lambda)]$V1
+results_mean$lower_q_log = results[, quantile(log_mean_normalized_regret, 0.025), by = .(cfg, eval_nr, cumbudget, lambda)]$V1
+results_mean[, se_mean_normalized_regret := sd_mean_normalized_regret / sqrt(max(results$repl))]
+results_mean[, upper_se := mean_mean_normalized_regret + se_mean_normalized_regret]
+results_mean[, lower_se := mean_mean_normalized_regret - se_mean_normalized_regret]
+
+y = "log(mean_mean_normalized_regret)" # "mean_log_mean_normalized_regret"
+y_min = "log(lower_se)" # "lower_q_log"
+y_max = "log(upper_se)" # "upper_q_log"
+
+p1 = ggplot(aes_string(x = "cumbudget", y = y, colour = "lambda", fill = "lambda"), data = results_mean[cfg == "lcbench"]) +
+  geom_line() +
+  geom_ribbon(aes_string(x = "cumbudget", ymin = y_min, ymax = y_max), colour = NA, linetype = 0, alpha = 0.25, show.legend = FALSE) +
+  theme_minimal() +
+  labs(title = "lcbench")
+
+p2 = ggplot(aes_string(x = "cumbudget", y = y, colour = "lambda", fill = "lambda"), data = results_mean[cfg == "rbv2_super"]) +
+  geom_line() +
+  geom_ribbon(aes_string(x = "cumbudget", ymin = y_min, ymax = y_max), colour = NA, linetype = 0, alpha = 0.25, show.legend = FALSE) +
+  theme_minimal() +
+  labs(title = "rbv2_super")
+
+p3 = ggplot(aes_string(x = "cumbudget", y = y, colour = "lambda", fill = "lambda"), data = results_mean[cfg == "branin"]) +
+  geom_line() +
+  geom_ribbon(aes_string(x = "cumbudget", ymin = y_min, ymax = y_max), colour = NA, linetype = 0, alpha = 0.25, show.legend = FALSE) +
+  theme_minimal() +
+  labs(title = "branin")
+
+g = ggarrange(p1, p2, p3, nrow = 1L, ncol = 3L, common.legend = TRUE)
+ggsave(file = paste0("different_lambdas.png"), width = 15, height = 8, plot = g)
 
