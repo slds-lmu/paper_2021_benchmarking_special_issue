@@ -5,7 +5,7 @@ reg = loadRegistry("reg_temp", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
-prob = "rbv2_super"
+prob = "lcbench"
 
 
 BUDGET_UPPER = list(
@@ -24,7 +24,7 @@ MAX_BUDGETS = list(
 
 
 ## Randomsearch (not full budget)
-out = testJob(tab[algorithm == "randomsearch" & problem == prob & full_budget == FALSE, ][1, ]) 
+out = testJob(tab[algorithm == "focussearch" & problem == prob & full_budget == FALSE, ][1, ]) 
 # expect that budget is tuned over on a log-scale 
 assert_true(length(unique(out$archive$budget)) > 1)
 assert_true(max(out$archive$budget) <= log(BUDGET_UPPER[[prob]]))

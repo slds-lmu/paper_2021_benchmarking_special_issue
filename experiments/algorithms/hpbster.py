@@ -221,7 +221,7 @@ def main(args):
     # args.fullbudget = 20000
     # Compute the total number of SH iterations
     max_SH_iter = -int(np.log(args.minbudget/args.maxbudget)/np.log(args.eta)) + 1
-
+    print(max_SH_iter)
     # args = parser.parse_args(['--problem', 'branin', '--tempdir', 'reg_temp/external/', '--task', 'NA', '--minbudget', '0.01', '--maxbudget', '1', '--eta', '3', '--fullbudget', '10', '--alg', 'hb', '--objective', 'y', '--objective_multiplier', '1'])
     # args = parser.parse_args(['--problem', 'nb301', '--tempdir', 'reg_temp/external/', '--task', 'NA', '--minbudget', '1', '--maxbudget', '52', '--eta', '3', '--fullbudget', '5000', '--alg', 'hb', '--objective', 'val_accuracy', '--objective_multiplier', '-1'])
     # result_logger = hpres.json_result_logger(directory=args.tempdir, overwrite=True)
@@ -241,17 +241,18 @@ def main(args):
         w = rbv2_super(task = args.task, objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1', nameserver_port = randport, run_id='example1')
     if args.problem == "branin":
         w = branin(objective = args.objective, objective_multiplier = args.objective_multiplier, sleep_interval=0, nameserver='127.0.0.1', nameserver_port = randport, run_id='example1')
+
     w.run(background=True)
-    if args.alg == "hb":
-        alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
-    if args.alg == "bohb":
-        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
 
     while total_budget_spent < args.fullbudget:
+        if args.alg == "hb":
+            alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
+        if args.alg == "bohb":
+            alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
         res = alg.run(n_iterations=max_SH_iter) # hand over number of brackets here
+        alg.shutdown(shutdown_workers = False)
         total_budget_spent = compute_total_budget(res)
-
-    print(total_budget_spent)
+        print(total_budget_spent)
 
     alg.shutdown(shutdown_workers = True)
     NS.shutdown()    

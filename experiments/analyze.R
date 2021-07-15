@@ -4,61 +4,76 @@ source("experiments/helper.R")
 
 library(data.table)
 library(ggplot2)
+library(na.tools)
+library(batchtools)
 
 # Learning Curves for the different problems 
-prob = "lcbench"
-path = file.path("experiments/results", prob)
-dirs = list.dirs(path)
-dirs = dirs[2:length(dirs)]
 
+#### branin
+
+prob = "branin"
+path = file.path("experiments/results_sequential/prepared_files", prob)
+dirs = list.files(path, pattern = ".rds", full.names = TRUE)
+
+df = computeDatasetForAnalysis(dirs, quantiles = seq(-2, 2, by = 0.1))
+
+# Aggregate over experiments 
+dfp = df[, .(mean_normalized_regret = mean(normalized_regret), lower = quantile(normalized_regret, 0.1), upper = quantile(normalized_regret, 0.9)), by = c("task", "algorithm_nexps", "q")]
+
+p = plotAggregatedLearningCurves(dfp, var = "mean_normalized_regret")
+p = p + ggtitle("Branin") # + theme(legend.direction = "horizontal", legend.position = "bottom")
+ggsave(file.path("experiments/results_sequential/figures", "branin_mean_normalized_regret.png"), p, width = 9, height = 5)
+
+# Aggregate over experiments 
+dfp = df[, .(mean_performance = mean(performance), lower = quantile(performance, 0.1), upper = quantile(performance, 0.9)), by = c("task", "algorithm_nexps", "q")]
+
+plotAggregatedLearningCurves(dfp, var = "mean_performance")
+
+# Analyze histograms over budgets closer
+df1 = readRDS("experiments/results_sequential/prepared_files/branin/hpbster_bohb.rds")
+df2 = readRDS("experiments/results_sequential/prepared_files/branin/mlr3hyperband.rds")
+
+df1 = df1[1, ]$result[[1]]
+df1$algorithm = "hpbster_hb"
+df1$config = 1:nrow(df1)
+df1$budget_cum = cumsum(df1$budget)
+df2 = df2[1, ]$result[[1]]
+df2$algorithm = "mlr3hyperband"
+df2$config = 1:nrow(df2)
+df2$budget_cum = cumsum(df2$budget)
+
+p1 = ggplot(data = rbind(df1, df2)[budget_cum <= 120, ], aes(x = budget, y = ..density.., fill = algorithm)) + geom_histogram(position = "dodge") + ggtitle("Budgets evaluated in a run")
+p1 + facet_grid(. ~ algorithm)
+
+p1 = ggplot(data = df1[budget_cum <= 120, ], aes(x = config, y = log(budget))) + geom_line() + ggtitle("hpbandster_hb")
+p1
+
+p2 = ggplot(data = df2[budget_cum <= 120, ], aes(x = config, y = log(budget))) + geom_line()  + ggtitle("mlr3hyperband")
+p2
+
+gridExtra::grid.arrange(p2, p1, nrow = 1)
+
+
+
+### lcbench 
+
+prob = "lcbench"
+path = file.path("experiments/results_sequential/prepared_files", prob)
+dirs = list.files(path, pattern = ".rds", full.names = TRUE)
+
+# Train and test instances 
 instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds")
 
-algorithms = c("hpbster", "mlr3hyperband", "smac", "randomsearch", "smashy")
+# df = computeDatasetForAnalysis(dirs[3], quantiles = seq(0, 4, by = 0.25))
+df = readRDS("experiments/results_sequential/prepared_files_for_analysis/lcbench/learning_curves.rds")
 
-d = dirs[1]
-paths = paste0(d, "/", algorithms, ".rds")
+# Analysis on a per task level 
+dfp = df[, .(mean_normalized_regret = mean(normalized_regret), lower = quantile(normalized_regret, 0.1), upper = quantile(normalized_regret, 0.9)), by = c("task", "algorithm", "q")]
 
-status_summary = readRDS(file.path("experiments/results/status_summary.rds"))
-# Exclude the ones for which we do not have a smac run
-ids = status_summary[algorithm == "smac" & done >= 3, ]$task
+dfp_train = dfp[task %in% setDT(instances)[cfg == "lcbench" & test == FALSE, ]$level, ]
 
-dirs = file.path("experiments", "results", "lcbench", ids)
-
-results_baseline = readRDS("experiments/results/results_baseline.rds")
-
-#### 
-# Transform the smashy results into the correct format
-df = results_baseline[cfg == prob, 1:23]
-df = as.data.table(df)
-df_unique = df[ , .(mean(epoch)), by = c("cfg", "level", "repl")]
-df_unique$job.id = 10^6 + seq_len(nrow(df_unique))
-
-outlist = lapply(seq_len(nrow(df_unique)), function(i) {
-  
-  config = df_unique[i, ]
-
-  out = df[level == config$level & repl == config$repl, c("epoch", "val_cross_entropy")]
-  out$epoch = exp(out$epoch)
-  names(out) = c("budget", "performance")
-  return(out)
-})
-
-df_unique$repl = NULL
-df_unique$V1 = NULL
-names(df_unique) = c("problem", "task", "job.id")
-df_unique = df_unique[, c("job.id", "problem", "task")]
-dff = cbind(df_unique, nobjectives = 1, objectives_scalar = "val_cross_entropy", algorithm = "smashy", algorithm_type = NA, eta = NA, full_budget = NA, multi.point = NA, .count = 1)
-dff$result = outlist
-
-for (tsk in unique(dff$task)) {
-  saveRDS(dff[task == tsk, ], file.path("experiments/results", prob, tsk, "smashy.rds"))
-}
-
-
-
-#### 
-
-computeDatasetForAnalysis(dirs, algorithms, seq(0, 4, by = 0.25))
+p = plotAggregatedLearningCurves(dfp_train, var = "mean_normalized_regret") + facet_wrap(vars(task), nrow = 4)
+p
 
 # TODO: Compute brackets to visualize them
 # brackets = df[, .SD[new_bracket], by = c("algorithm")]

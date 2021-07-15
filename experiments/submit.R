@@ -19,19 +19,18 @@ tosubmit = ijoin(tosubmit, findNotDone())
 tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
 
-# 1. RANDOMSERACH 
+# 1. RANDOMSERACH (Budget factor 32)
 # Time: ~ 4 minutes (lcbench)
-#       ~ x minutes (rbv2_super)
+#       ~ 90 - 120 minutes (rbv2_super; bc. of log-scale? )
 tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ]
-tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 32)
+tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 15)
 
 submitJobs(tosubmit_rs, resources = resources.serial.default)
 
 
-
 # 2. mlrintermbo (NOT SUBMITTED YET)
-# Time (full budget = TRUE): 	 min
-# Time (full_budget = FALSE): 	3.85 h
+# Time: ~ X minutes (lcbench)
+#       ~ X minutes (rbv2_super)
 tosubmit_mbo = tosubmit[algorithm == "mlrintermbo_full_budget", ]
 tosubmit_mbo$chunk = chunk(tosubmit_mbo$job.id, chunk.size = 50)
 
@@ -40,7 +39,8 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
 
 # 3. BOHB
-# Time: ~ 60 minutes
+# Time: ~ 1.3 minutes (lcbench)
+#       ~ 20 minutes (rbv2_super)
 tosubmit_hpbster = tosubmit[algorithm == "hpbster_bohb", ]
 tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 50)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
@@ -49,31 +49,38 @@ submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
 # 4. HB
-# Time: ~ ?? minutes
+# Time: ~ 0.5 minutes (lcbench)
+#       ~ 1.5 minutes (rbv2_super)
 tosubmit_hpbster = tosubmit[algorithm == "hpbster_hb", ]
 tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 350)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
-# 5. mlr3hyperband
-# Time: ~ 4 minutes 
+# 5. mlr3hyperband (Budget factor 32)
+# Time: ~ 5 minutes (lcbench)
+#       ~ 90 minutes (rbv2_super)
 tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
 tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 50)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
 
 
-
 # 6. smac
-# Time: ~ 4 minutes 
+# Time: ~ 5 minutes (lcbench)
+#       ~ 120 minutes (rbv2_super)
 tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 25)
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 6)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
-
+# 7. Focussearch (NOT SUBMITTED YET )
+# Time: ~ X minutes 
+tosubmit_fs = tosubmit[algorithm == "focussearch_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_fs$chunk = chunk(tosubmit_fs$job.id, chunk.size = 5)
+tosubmit_fs = tosubmit_fs[- which(job.id %in% findOnSystem()$job.id), ]
+submitJobs(tosubmit_fs, resources = resources.serial.default)
 
 
 # Check whether those first jobs are done
@@ -83,25 +90,8 @@ table(ijoin(tab, findSubmitted())[task %in% tasks, ]$algorithm)
 
 
 
-# Resubmit hpbster for which we have no results 
-job.ids = list.dirs("reg/external/", full.names = FALSE)
-out = lapply(job.ids, function(job.id) {
-	data.frame(job.id = as.numeric(job.id), records.exist = file.exists(file.path("reg/external/", job.id, "results.pkl")))
-})
-out = do.call(rbind, out)
 
-# Find the hpbster ones that are done
-out = ijoin(out, findDone())
-out = ijoin(tab, out)
-resubmit = out[which(!records.exist), ]
-
-resubmit$chunk = chunk(resubmit$job.id, chunk.size = 120)
-
-submitJobs(resubmit[chunk %in% 1:2, ], resources = resources.serial.default)
-
-
-
-# STATUS 11.07.2021
+# STATUS 13.07.2021
 
 ## SEQUENTIAL EXPERIMENTS
 
@@ -122,7 +112,7 @@ submitJobs(resubmit[chunk %in% 1:2, ], resources = resources.serial.default)
 ###   - mlrintermbo
 ###   - smac
 
-### RBV2_SUPER 
+### RBV2_SUPER (89 tasks)
 
 ### - Registry: reg_sequential (LRZ)
 ### - Test run (to get the time): 
@@ -131,34 +121,32 @@ submitJobs(resubmit[chunk %in% 1:2, ], resources = resources.serial.default)
 ###		- hpbster_bohb: 20 Minutes 
 ###		- smac_full_budget: 120 minutes
 ### - Completed: 
-###		-
-### - Submitted: 
 ###		- hpbster_hb
 ###		- hpbster_bohb
-### - Not submitted:  
+### - Submitted: 
 ### 	- randomsearch_full_budget
-###		- smac_full_budget
+###		- mlr3hyperband 
+### - Not submitted:  
+###		- smac_full_budget (COULDN'T SUBMIT ALL YET)
 ###   - random_search
 ###   - mlrintermbo (BUG)
 ###   - smac
-###		- mlr3hyperband (BUG)
 ### 	- mlrintermbo_full_budget (BUG)
 
 
-### LCBENCH 
+### LCBENCH (35 tasks)
 
 ### - Registry: reg_sequential (LRZ)
 ### - Test run (to get the time): 
 ### - Completed: 
-###		-
-### - Submitted: 
 ### 	- randomsearch_full_budget
 ###		- hpbster_hb
 ###		- hpbster_bohb
 ###		- smac_full_budget
 ###		- mlr3hyperband
-###   - mlrintermbo_full_budget
+### - Submitted: 
 ### - Not submitted:  
+###   - mlrintermbo_full_budget
 ###   - random_search
 ###   - smac
 ### 	- mlrintermbo

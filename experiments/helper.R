@@ -66,10 +66,6 @@ readProblem = function(data, job, task, objectives, ...) {
       ins$search_space$values = c(ins$search_space$values, ts)
       ins$search_space$params[[budget_param]]$lower = 3^(-3)
     }
-
-    if (data$id == "Branin") {
-      ins$search_space$params[[budget_param]]$lower = 3^(-4)
-    }
   } 
 
   if (nobjectives > 1) {
@@ -104,111 +100,91 @@ compute_total_budget = function(bupper, blower, eta) {
 
 
 
-computeDatasetForAnalysis = function(dirs, algorithm, quantiles) {
+computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
 
-  out = lapply(dirs, function(d) {
+  if (parallel) {
+    library(future.apply)
+    plan(multisession)
+    fun = future_lapply
+  } else {
+    fun = lapply
+  }
 
-    print(d)
+  out = fun(dirs, function(d) {
+    df = readRDS(d)
 
-    paths = paste0(d, "/", algorithms, ".rds")
-    
-    dfs = lapply(paths, function(p) {
-        if (file.exists(p)) {
-          df = readRDS(p)
+    dfn = data.table()
 
-          jids = df[, .(job.id = head(job.id, 3)), by = c("algorithm", "algorithm_type", "full_budget")]
-          df = df[job.id %in% jids$job.id, ]
+    for (i in seq_len(nrow(df))) {
+      print(i)
+      dh = df[i, ]
+      # dh$multi.point = NULL
+      dh$result = NULL
+      dh = cbind(dh, df[i, ]$result[[1]])
 
-          ss = !unlist(lapply(df$result, is.null))
-          df = df[ss, ]
-
-          df_out = lapply(seq(1, nrow(df)), function(i) {
-            dh = df[i, ]
-            dh$result = NULL
-            # dh$multi.point = NULL
-            cbind(dh, df[i, ]$result[[1]])
-          })
-          do.call(rbind, df_out)      
-        }
+      dh = setDT(dh)
+      dh[, budget_cum := cumsum(budget)]
+      # Budget in multiples of the maximum budget and on a logarithmic scale 
+      dh$budget_cum_log = log(dh$budget_cum / max(dh$budget), 10)
+      df_sub = lapply(quantiles, function(q) {
+        cbind(dh[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
       })
+      df_sub = do.call(rbind, df_sub)
 
-      dfs = do.call(rbind, dfs)
-      dfs = as.data.table(dfs)
+      df_sub2 = lapply(quantiles, function(q) {
+        cbind(dh[budget_cum_log <= q & budget == max(dh$budget), .SD[which.min(performance)], by = c("job.id")], q = q)
+      })
+      df_sub2 = do.call(rbind, df_sub2)
+      names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
+      df_to_add = merge(df_sub, df_sub2[, c("job.id", "q", "perf_min_on_full_budget")], by = c("job.id", "q"), all.x = TRUE)
 
-      dfs[, budget_cum := cumsum(budget), by = c("job.id")]
-
-      dfs[, nexps := length(unique(job.id)), by = c("problem", "task", "algorithm", "algorithm_type", "full_budget", "multi.point")]
-
-      dfs[algorithm_type == "bohb", ]$algorithm = "hpbster_bohb"
-      dfs[algorithm_type == "hb", ]$algorithm = "hpbster_hb"
-      dfs[full_budget == TRUE, ]$algorithm = paste0(dfs[full_budget == TRUE, ]$algorithm, "_full_budget")
-
-      dfs$algorithm_nexps = paste0(dfs$algorithm, " (", dfs$nexps, ")")
-      dfs = dfs[, perf_min := cummin(performance), by = c("job.id")]
-
-      bla = unique(dfs[, c("job.id", "algorithm_nexps")])
-      bla = bla[, repl := 1:.N, by = c("algorithm_nexps")]
-
-      if (!(any(bla$repl) < 3)) {
-        df_sub = NULL
+      if (nrow(dfn) > 0) {
+        dfn = rbind(dfn, df_to_add)
       } else {
-
-        dfs = merge(dfs, bla, all.x = TRUE, by = c("job.id", "algorithm_nexps"))
-
-        # Bracket location
-        dfs$new_bracket = c(TRUE, dfs$budget[2:length(dfs$budget)] - dfs$budget[seq_len(length(dfs$budget) - 1)] == -50)
-        dfs$new_bracket[!(dfs$algorithm %in% c("randomsearch", "mlrintermbo", "smac"))] = FALSE
-
-        dfs$end_init_des = FALSE
-        dfs = dfs[, iter := 1:.N, by = c("job.id")]
-        dfs[algorithm == "smac" & iter == 10 * 8, ]$end_init_des = TRUE
-        dfs[algorithm == "mlrintermbo" & iter == 4 * 8, ]$end_init_des = TRUE
-        df = dfs
-        df$budget_cum_log = log(df$budget_cum / 52, 10)
-        dfin = df[, .SD[which(end_init_des)], by = c("job.id")]
-        dfin$end_init_des_budget_cum_log = dfin$budget_cum_log
-        df = merge(df, dfin[, c("job.id", "end_init_des_budget_cum_log") ], all.x = TRUE, by = c("job.id"))
-
-        # Compare performance at fixed points in time 
-        df_sub = lapply(quantiles, function(q) {
-          cbind(df[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id", "end_init_des")], q = q)
-        })
-        df_sub = do.call(rbind, df_sub)
-
-        # get the random-search ones
-        df_comp = df_sub[algorithm == "randomsearch_full_budget", ]
-        df_comp = df_comp[, c("q", "repl", "perf_min")]
-        names(df_comp) = c("q", "repl", "randomsearch_perf")
-        df_sub = merge(df_sub, df_comp, by = c("q", "repl"), all.x = TRUE)
-        df_sub$perf_min_rel_rs = (df_sub$perf_min - df_sub$randomsearch_perf) / df_sub$randomsearch_perf
-
-        df_sub[, rank := rank(perf_min), by = c("q", "task", "repl")]
-
-        df_sub = df_sub[, .(perf_mean = mean(performance), perf_mean_rel_rs = mean(perf_min_rel_rs), mean_rank = mean(rank), q_upper = quantile(performance, 0.9), q_lower = quantile(performance, 0.1), end_init_des = mean(end_init_des_budget_cum_log)), by = c("q", "algorithm_nexps", "task")]
-
+        dfn = df_to_add
       }
+    }
 
-      saveRDS(df_sub, file.path(d, "learning_curves.rds"))
+    return(dfn)
   })
+
+  out = do.call(rbind, out)
+  out = out[- which(is.na(out$perf_min_on_full_budget)), ]
+
+  # Comparison with randomsearch 
+
+  # Overall best result achieved by randomsearch per task 
+  if (out$problem[1] == "branin") {
+    out$y_min = 0.3978874
+    out$y_max = 485.3732
+  } else {
+    # Compute the overall minimum and maximum per problem 
+    minmax = out[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+    out = merge(out, minmax, all.x = TRUE, by = c("task"))
+  }
+
+  out$normalized_regret = (out$performance - out$y_min) / (out$y_max - out$y_min)
+
+  return(out)
 }
 
-plotAggregatedLearningCurves = function(dir, init_des = FALSE, with_brackets = FALSE, var = "perf_mean") {
 
-  dfq = readRDS(file.path(dir, "learning_curves.rds"))
 
-  p = ggplot(data = dfq, aes_string(x = "q", y = var, colour = "algorithm_nexps", fill = "algorithm_nexps")) 
+
+plotAggregatedLearningCurves = function(df, var = "perf_mean", y_name = NULL) {
+
+  if (is.null(y_name)) {
+    y_name = var
+  }
+
+  p = ggplot(data = df, aes_string(x = "q", y = var, colour = "algorithm", fill = "algorithm")) 
   p = p + geom_line()
-  p = p + geom_ribbon(aes(ymin = q_lower, ymax = q_upper), alpha = 0.1, colour = NA)
+  # p = p + geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.1, colour = NA)
   p = p + theme_bw()
   p = p + scale_x_continuous(breaks = seq(0, 4, by = 1),
           labels= 10^seq(0, 4))
-  if (init_des) {
-    p = p + geom_vline(aes(xintercept = end_init_des, colour = algorithm_nexps), lty = 2)
-  }
-
   p = p + xlab("Budget spent (in multiples of full budget)")
-  p = p + ylab("Mean validation cross entropy")
-  p = p + ggtitle(paste0("LCBench, task_id = ", strsplit(dir, "/")[[1]][4]))
+  p = p + ylab(y_name)
   p
 }
 

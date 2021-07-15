@@ -1,137 +1,117 @@
 source("experiments/config.R")
 
 # Load real registry
-reg = loadRegistry("reg", writeable = TRUE)
+reg = loadRegistry("reg_sequential", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "multi.point"))
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
+
+
+done = ijoin(tab, findDone())
+done = done[, .SD[which.min(job.id)], by = c("algorithm", "problem")]
+res = reduceResultsDataTable(done$job.id, function(x) x$runtime)
+ijoin(res, done)
 
 # Reduce all results in separate folders 
+# get_runtime_overview = function(tab) {
+# 	res = reduceResultsDataTable(ijoin(tab, findDone()), function(x) as.numeric(x$runtime, units = "secs"))
+# 	bla = ijoin(res, tab)[, c("result", "algorithm", "full_budget", "algorithm_type", "multi.point")]
 
-get_runtime_overview = function(tab) {
-	res = reduceResultsDataTable(ijoin(tab, findDone()), function(x) as.numeric(x$runtime, units = "secs"))
-	bla = ijoin(res, tab)[, c("result", "algorithm", "full_budget", "algorithm_type", "multi.point")]
+# 	return(bla)
+# }
 
-	return(bla)
-}
+# runtimes = get_runtime_overview(tab[algorithm == "smac", ])
+# runtimes[, mean(result[[1]]) / 60, by = c("algorithm", "algorithm_type", "full_budget", "multi.point")]
+# saveRDS(runtimes, "experiments/results/runtimes.rds")
 
-runtimes = get_runtime_overview(tab[algorithm == "smac", ])
-runtimes[, mean(result[[1]]) / 60, by = c("algorithm", "algorithm_type", "full_budget", "multi.point")]
-saveRDS(runtimes, "experiments/results/runtimes.rds")
+# Reduce results on a per task level
+
+path = "experiments/results_sequential/prepared_files"
+
+prob = "lcbench"
+algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_hb", "hpbster_bohb", "smac_full_budget")
+
+# Check if all the runs are complete
+sub_tab = tab[problem %in% prob & algorithm %in% algos, ]
+sub_tab = ijoin(sub_tab, findDone())
+table(sub_tab$task, sub_tab$algorithm)
 
 
-# Reduce results on a per task level 
-path = "experiments/results"
+for (algo in algos) {
+	tored = sub_tab[problem == prob & algorithm == algo, ]
 
-problems = unique(tab$problem)
-algos = unique(tab$algorithm)
+	if (nrow(tored) < 30) {
+		stop(paste0("Stop: ", nrow(tored), " < ", 30))
+	} else {
+		print(paste("Reducing: ", algo))
+		
+		res = reduceResultsDataTable(tored, function(x) {
+			x$archive[, c("budget", "performance")]
+		})
 
-status_summary = NULL
+		if (algo %in% c("hpbster_hb", "hpbster_bohb", "smac", "smac_full_budget")) {
 
-tasks = unique(tab$task)
+			library(reticulate)
+			pd = import("pandas")
 
-for (prob in c("lcbench")) {
-	for (tsk in unique(tab[problem == prob, ]$task)) {
-		for (algo in algos) {
-			if (!is.na(tsk)) {
-				tored = tab[problem == prob & task %in% tsk & algorithm == algo, ]
-			} else {
-				tored = tab[problem == prob & algorithm == algo, ]				
-			}
-			toreduce = ijoin(tored, findDone())
-
-			notdone = ijoin(tored, findNotDone())
-
-			status_summary = rbind(status_summary, data.table(problem = prob, task = tsk, algorithm = algo, done = nrow(toreduce), open = nrow(notdone)))
-			
-			if (nrow(toreduce) > 0) {
-
-				print(paste("Reducing: ", algo, "for task", tsk))
+			updates = lapply(res$job.id, function(jid) {
 				
-				res = reduceResultsDataTable(toreduce, function(x) {
-					x$archive[, c("budget", "performance")]
-				})
+				df = NULL
 
-				if (algo %in% c("hpbster", "smac")) {
+				# read the result 
+				path = file.path(reg$file.dir, "external", jid, "results.pkl")
 
-					library(reticulate)
-					pd = import("pandas")
+				if (file.exists(path)) {
 
-					updates = lapply(res$job.id, function(jid) {
-						
-						df = NULL
+					if (algo %in% c("hpbster_hb", "hpbster_bohb")) {
+						df = pd$read_pickle(path)$get_pandas_dataframe()
+						df = as.data.table(df)
+						names(df)[which(names(df) == "loss")] = "performance"
+					} 
+					if (algo %in% c("smac", "smac_full_budget")) {
+						df = as.data.table(pd$read_pickle(path))
+					}
 
-						# read the result 
-						path = file.path(reg$file.dir, "external", jid, "results.pkl")
+					if (tab[job.id == jid, ]$objectives == "val_accuracy")
+						df$performance = (-1) * df$performance
 
-						if (file.exists(path)) {
-
-							if (algo == "hpbster"){
-								df = pd$read_pickle(path)$get_pandas_dataframe()
-								df = as.data.table(df)
-								names(df)[which(names(df) == "loss")] = "performance"
-							} 
-							if (algo == "smac") {
-								df = as.data.table(pd$read_pickle(path))
-							}
-
-
-							if (tab[job.id == jid, ]$objectives == "val_accuracy")
-								df$performance = (-1) * df$performance
-
-							df = df[, c("budget", "performance")]
-						} else {
-							warning(paste0(jid, " not implemented yet."))
-						}
-
-						return(df)
-					})	
-
-					res$result = updates	
-				}
-
-				res = ijoin(tab, res)	
-
-				if (!is.na(tsk)) {
-					savepath = file.path(path, prob, tsk)
+					df = df[, c("budget", "performance")]
 				} else {
-					savepath = file.path(path, prob)
+					warning(paste0("Results file does not exist for ", jid))
 				}
 
-				dir.create(savepath, recursive = TRUE)
+				return(df)
+			})	
 
-				saveRDS(res, file.path(savepath, paste0(algo, ".rds")))
-			}
+			res$result = updates	
 		}
 	}
+	
+	res = ijoin(tab, res)	
+
+	savepath = file.path(path, prob)
+
+	dir.create(savepath, recursive = TRUE)
+
+	saveRDS(res, file.path(savepath, paste0(algo, ".rds")))
 }
 
-saveRDS(status_summary, "experiments/results/status_summary.rds")
 
+# Also store the smashy results accordingly 
+path_orig_files = file.path("experiments", "results_sequential", "original_files")
+problem = "branin"
 
+f = file.path(path_orig_files, problem, "results_baseline_lcbench_config_branin.rds") #paste0("results_lambda_", problem, ".rds"))
 
-toreduce = tab[problem == prob & task == tsk, ]
-toreduce = ijoin(toreduce, findDone())
+df = readRDS(f)
 
-res = reduceResultsDataTable(toreduce)
-res = ijoin(tab, res)
+res = lapply(unique(df$repl), function(r) {
+	out = df[repl == r, c("fidelity", "y")]
+	names(out) = c("budget", "performance")
+	out$budget = exp(out$budget)
+	out
+})
 
-toupdate = res[which(res$algorithm_type %in% c("bohb", "hb")), ]$job.id
+tab_new = data.table(job.id = - 2000 - seq_len(length(res)), problem = "branin", task = NA, nobjectives = 1, objectives_scalar = "val_balanced_accuracy", algorithm = "smashy_config_lcbench", algorithm_type = NA, eta = NA, full_budget = NA, .count = 1)
+tab_new$result = res
 
-for (tsk in tasks) {
-
-	out = lapply(algos, function(algo) 	readRDS(file.path(path, prob, tsk, paste0(algo, ".rds"))))
-	df = lapply(out, function(x) {
-		if (any(names(x) == "V2")) {
-			names(x)[which(names(x) == "V2")] == "result"
-		}
-		outn = lapply(1:nrow(x), function(i) {
-			mm = cbind(x[i, - c("result")], x[i, c("result")]$result[[1]])
-			mm$budget_cum = cumsum(mm$budget)
-			mm
-		})
-		do.call(rbind, outn)
-	})
-	df = do.call(rbind, df)
-
-	saveRDS(df, file.path(path, prob, tsk, paste0("result_sum.rds")))
-}
+saveRDS(tab_new, file.path(path, problem, "smashy.rds"))
