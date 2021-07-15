@@ -1,16 +1,16 @@
 # Log:
-# * removed kknn with n = 1
+# * remove kknn with n = 1
 
 set.seed(7345)
 source("./irace/optimization.R")
 lgr::get_logger("bbotk")$set_threshold("warn")
 folder = "./irace/data"
 workdir = "./irace/data/surrogates"
-subfolder = "data_12_07_single_rbv2"
+subfolder = "data_12_07_single_lcbench"
 dir.create(file.path(folder,  subfolder))
 
 # set instances
-instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg == "rbv2_super"]
+instances_plan = readRDS(system.file("instances.rds", package = "mfsurrogates"))[test == FALSE & cfg == "lcbench"]
 # set targets
 instances_plan[,targets := ifelse(cfg == "lcbench", "val_cross_entropy", "logloss")]
 # set lower and upper bound of fidelity parameter
