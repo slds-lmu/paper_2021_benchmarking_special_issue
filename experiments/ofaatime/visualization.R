@@ -1,3 +1,5 @@
+# FIXME: obsolete, move respective parts directly to the other files
+
 library(data.table)
 library(future)
 library(future.apply)
@@ -6,7 +8,7 @@ library(ggpubr)
 library(batchtools)
 library(mlr3misc)
 
-plan(multicore, workers = 2)
+plan(multicore, workers = 16)
 loadRegistry("registry_new")
 
 ### baseline

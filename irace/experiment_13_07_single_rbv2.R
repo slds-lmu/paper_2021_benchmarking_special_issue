@@ -1,12 +1,13 @@
 # Log:
 # * removed kknn with n = 1
+# * install kknn dev version
 
 set.seed(7345)
 source("./irace/optimization.R")
 lgr::get_logger("bbotk")$set_threshold("warn")
 folder = "./irace/data"
 workdir = "./irace/data/surrogates"
-subfolder = "data_12_07_single_rbv2"
+subfolder = "data_13_07_single_rbv2"
 dir.create(file.path(folder,  subfolder))
 
 # set instances
