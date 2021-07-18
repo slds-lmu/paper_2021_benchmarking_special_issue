@@ -19,7 +19,6 @@ safeSetupRegistry = function(registry_name, overwrite, packages, def) {
 }
 
 
-
 readProblem = function(data, job, task, objectives, ...) {
 
   nobjectives = length(objectives)
@@ -98,7 +97,7 @@ compute_total_budget = function(bupper, blower, eta) {
   sum(unlist(out))
 }
 
-compute_total_budget = function(bupper, blower, eta) {
+compute_total_evals = function(bupper, blower, eta) {
   smax = floor(log(bupper / blower, eta))
   B = (smax + 1) * bupper
   brackets = seq(0, smax)
@@ -109,7 +108,7 @@ compute_total_budget = function(bupper, blower, eta) {
     out = lapply(seq(0, s), function(i) {
       ni = floor(n * eta^(-i))
       ri = r * eta^i
-      ni * ri
+      ni 
     })
     sum(unlist(out))
   })

@@ -79,7 +79,7 @@ submitJobs(tosubmit_smac, resources = resources.serial.default)
 # Time: ~ 5 minutes (lcbench)
 #       ~ 120 minutes (rbv2_super)
 tosubmit_smac = tosubmit[algorithm == "smac_hb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 100)
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 100)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
