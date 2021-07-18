@@ -75,7 +75,24 @@ tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
-# 7. Focussearch (NOT SUBMITTED YET )
+# 7. smac hb
+# Time: ~ 5 minutes (lcbench)
+#       ~ 120 minutes (rbv2_super)
+tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 6)
+tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
+submitJobs(tosubmit_smac, resources = resources.serial.default)
+
+# 7. smac bohb
+# Time: ~ 5 minutes (lcbench)
+#       ~ 120 minutes (rbv2_super)
+tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 6)
+tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
+submitJobs(tosubmit_smac, resources = resources.serial.default)
+
+
+# 9. Focussearch (NOT SUBMITTED YET )
 # Time: ~ X minutes 
 tosubmit_fs = tosubmit[algorithm == "focussearch_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
 tosubmit_fs$chunk = chunk(tosubmit_fs$job.id, chunk.size = 5)

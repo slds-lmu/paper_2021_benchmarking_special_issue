@@ -34,7 +34,7 @@ switch(SETUP,
 		# do never overwrite registry
 		OVERWRITE = FALSE
 		# termination criterion for each run
-		registry_name = "reg_branin"
+		registry_name = "reg_sequential"
 		# replications
 		REPLS = 30L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
