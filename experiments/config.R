@@ -12,6 +12,7 @@ source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/hpbster.R")
 source("experiments/algorithms/smac_.R")
+source("experiments/algorithms/smac_hyperband.R")
 
 # Test setup with reduced budget (see below) or real setup 
 SETUP = "REAL"
@@ -66,7 +67,6 @@ lapply(packages, library, character.only = TRUE)
 
 
 # --- 1. PROBLEM DESIGN ---
-
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
@@ -138,8 +138,10 @@ ALGORITHMS = list(
     hpbster_bohb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "bohb")), # log-scale not relevant
     # hpbster_bohb_32 = list(...), # TODO: Variant that is comparable to the parallelized scenario
     smac = list(fun = smac, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    smac_full_budget = list(fun = smac, ades = data.table(full_budget = TRUE))# , 
+    smac_full_budget = list(fun = smac, ades = data.table(full_budget = TRUE)), 
     # smac_full_budget_32 = list() # TODO: Variant that does the multi-point proposals, 
+    smac_hb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
+    smac_bohb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "bohb")) # log-scale not relevant
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)

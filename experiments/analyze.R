@@ -64,7 +64,7 @@ dirs = list.files(path, pattern = ".rds", full.names = TRUE)
 # Train and test instances 
 instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds")
 
-# df = computeDatasetForAnalysis(dirs[3], quantiles = seq(0, 4, by = 0.25))
+# df = computeDatasetForAnalysis(dirs, quantiles = seq(-2, 2, by = 0.25))
 df = readRDS("experiments/results_sequential/prepared_files_for_analysis/lcbench/learning_curves.rds")
 
 # Analysis on a per task level 

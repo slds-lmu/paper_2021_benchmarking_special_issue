@@ -97,3 +97,23 @@ path = file.path(reg$file.dir, "external", jid, "results.pkl")
 df = as.data.table(pd$read_pickle(path))
 sum(df$budget)
 MAX_BUDGETS[[prob]]
+
+## SMAC (full budget)
+jid = tab[algorithm == "smac_hb" & problem == prob, ][1, ]$job.id
+out = testJob(jid) 
+library(reticulate)
+pd = import("pandas")
+path = file.path(reg$file.dir, "external", jid, "results.pkl")
+df = as.data.table(pd$read_pickle(path))
+sum(df$budget)
+MAX_BUDGETS[[prob]] * 4
+
+## SMAC (full budget)
+jid = tab[algorithm == "smac_bohb" & problem == prob, ][1, ]$job.id
+out = testJob(jid) 
+library(reticulate)
+pd = import("pandas")
+path = file.path(reg$file.dir, "external", jid, "results.pkl")
+df = as.data.table(pd$read_pickle(path))
+sum(df$budget)
+MAX_BUDGETS[[prob]]

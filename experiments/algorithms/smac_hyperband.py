@@ -14,7 +14,8 @@ import onnxruntime
 
 import smac
 from smac.configspace import ConfigurationSpace
-from smac.facade.smac_hpo_facade import SMAC4HPO
+from smac.facade.smac_bohb_facade import BOHB4HPO
+from smac.facade.hyperband_facade import HB4AC
 # Import SMAC-utilities
 from smac.scenario.scenario import Scenario
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformIntegerHyperparameter
@@ -29,11 +30,9 @@ import os
 import pickle
 import sys
 
-import dask
-from distributed import Client
 
 class worker():
-    def __init__(self, problem, task, budget_param, objective, objective_multiplier, eta, minbudget, maxbudget, total_budget):
+    def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, eta, total_budget):
         base = importr("base")
         self.problem = problem 
         self.task = task
@@ -68,23 +67,17 @@ class worker():
         with open(self.config_space_path, 'r') as f:
             json_string = f.read()
             cs = json.read(json_string)
-        if not self.full_budget: # Tune over the budget parameter instead of setting it to the full budget
-            if self.problem in ["lcbench", "nb301"]:
-                budget = UniformIntegerHyperparameter(self.budget_param, self.minbudget, self.maxbudget, default_value=self.maxbudget, log = self.budget_on_log)
-            if self.problem in ["rbv2_super", "branin"]:
-                budget = UniformFloatHyperparameter(self.budget_param, self.minbudget, self.maxbudget, default_value = self.maxbudget, log = self.budget_on_log)
-            cs.add_hyperparameters([budget])
-        return(cs)
-    def compute(self, config):
-        config = config.get_dictionary()
-        if self.full_budget: # Set the budget parameter to the full budget 
-            config.update({self.budget_param: self.maxbudget}) 
+            return(cs)
+    def compute(self, cfg, seed, budget, **kwargs):
+        config = cfg.get_dictionary()
         if self.problem in ["lcbench", "rbv2_super", "nb301"]:
             if self.problem in ['lcbench']: 
                 config.update({"OpenML_task_id": self.task}) 
+                config.update({self.budget_param: int(budget)}) 
             if self.problem in ['rbv2_super']:
                 config.update({"task_id": self.task})
                 config.update({"repl": 10})  # Note: we have to use a fixed repl; 10 is the default
+                config.update({self.budget_param: budget}) 
             xdt = pd.DataFrame.from_dict([config])
             xdt = pandas2ri.py2rpy(xdt)
             li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       
@@ -95,7 +88,7 @@ class worker():
             res =  { key : res_[key] for key in res_.keys().to_list() } 
             out = self.multiplier * float(res[self.objective])
         else:
-            out = (config["x2"] - ((5.1 / (4 * math.pi**2)) - 0.1 * (1 - config["fidelity"])) * config["x1"]**2 + (5 / math.pi) * config["x1"] - 6)**2 + 10 * (1 - (1 / (8 * math.pi))) * math.cos(config["x1"]) + 10
+            out = (config["x2"] - ((5.1 / (4 * math.pi**2)) - 0.1 * (1 - budget)) * config["x1"]**2 + (5 / math.pi) * config["x1"] - 6)**2 + 10 * (1 - (1 / (8 * math.pi))) * math.cos(config["x1"]) + 10
         return(out)  # SMAC always minimizes! 
 
 def create_new_scenario(old_scen_dict, out_dir, new_budget):
@@ -114,17 +107,17 @@ def create_new_scenario(old_scen_dict, out_dir, new_budget):
     return({"scenario": new_scenario, "stats": stats, "trajectory": trajectory, "runhistory": runhistory, "incumbent": incumbent})
 
 def main(args): 
-    # args = parser.parse_args(['--problem', 'lcbench', '--tempdir', 'reg_temp/external/', '--task', '3945', '--budget_param', 'epoch', '--minbudget', '1', '--maxbudget', '52', '--full_budget', 'TRUE', '--total_budget', '1000', '--objective', 'val_cross_entropy', '--objective_multiplier', '1', '--seed', '1', "--budget_on_log", "TRUE"])
+    # args = parser.parse_args(['--problem', 'lcbench', '--tempdir', 'reg_temp/external/', '--task', '3945', '--budget_param', 'epoch', '--minbudget', '1', '--maxbudget', '52', '--eta', '3', '--total_budget', '1000', '--objective', 'val_cross_entropy', '--objective_multiplier', '1', '--seed', '1'])
     # args = parser.parse_args(['--problem', 'rbv2_super', '--tempdir', 'reg_temp/external/', '--task', '1040', '--budget_param', 'trainsize', '--minbudget', '0.05', '--maxbudget', '1', '--full_budget', 'TRUE', '--total_budget', '10', '--objective', 'logloss', '--objective_multiplier', '1', '--seed', '1', "--budget_on_log", "TRUE"])
     parser = argparse.ArgumentParser(description = "Parsing Arguments")
+    parser.add_argument("--alg", type=str, required=True)
     parser.add_argument("--problem", type=str, required=True)
     parser.add_argument("--tempdir", type=str, required=True)
     parser.add_argument("--task", type=str, required=True)
+    parser.add_argument("--eta", type=int, required=True) 
     parser.add_argument("--budget_param", type=str, required = True)
     parser.add_argument("--minbudget", type=float, required=True)
     parser.add_argument("--maxbudget", type=float, required=True) 
-    parser.add_argument("--full_budget", type=str, required=True)
-    parser.add_argument("--budget_on_log", type=str, required=True)
     parser.add_argument("--total_budget", type=int, required=True) 
     parser.add_argument("--objective", type=str, required=True)
     parser.add_argument("--objective_multiplier", type=int, required=True)
@@ -133,84 +126,46 @@ def main(args):
     # parser.add_argument("--multi.point", type=int, required=True)
     args = parser.parse_args(args)
 
-    if args.full_budget == 'TRUE':
-        args.full_budget = True
-    else: 
-        args.full_budget = False
-
-    if args.budget_on_log == 'TRUE':
-        args.budget_on_log = True
-    else: 
-        args.budget_on_log = False
-
-
     logging.basicConfig(level=logging.INFO) 
 
-    w = worker(problem=args.problem, task=args.task, budget_param=args.budget_param, objective=args.objective, objective_multiplier=args.objective_multiplier, minbudget = args.minbudget, maxbudget=args.maxbudget, full_budget=args.full_budget, budget_on_log=args.budget_on_log, total_budget=args.total_budget)
+    w = worker(problem=args.problem, task=args.task, budget_param=args.budget_param, objective=args.objective, objective_multiplier=args.objective_multiplier, minbudget = args.minbudget, maxbudget=args.maxbudget, eta = args.eta, total_budget=args.total_budget)
 
     cs = w.get_configspace()
-
+    
     fun = w.compute
 
-    # Number of function evaluations (need to restart in case budget parameter is not set to a fixed value)
-    total_budget_in_evals =  math.ceil(args.total_budget / args.maxbudget)
-
     scen = {"run_obj": "quality",  # we optimize quality (alternatively runtime)
-                         "runcount-limit": total_budget_in_evals,  
+                         "runcount-limit": args.total_budget,  
                          "cs": cs,  # configuration space
                          "deterministic": "true", 
-                         "memory_limit": 2048, 
-                         "wallclock-limit": 2600 * 48,
+                         # "memory_limit": 2048, 
+                         # "wallclock-limit": 2600 * 48,
                          "output_dir": args.tempdir
                          }
 
     scenario = Scenario(scen)
 
-    print("Optimizing!")
-    smac = SMAC4HPO(scenario = scenario,
-                   rng = np.random.RandomState(args.seed), 
-                   tae_runner = fun,
-                   run_id = 1
-                   )
+    # intensifier parameters
+    intensifier_kwargs = {'initial_budget': args.minbudget, 'max_budget': args.maxbudget, 'eta': args.eta}
+    # To optimize, we pass the function to the SMAC-object
+    if args.alg == "bohb":
+        smac = BOHB4HPO(scenario=scenario, rng=np.random.RandomState(42),
+                     tae_runner=fun,
+                     intensifier_kwargs=intensifier_kwargs)  # all arguments related to intensifier can be passed like this
+    else: 
+        smac = HB4AC(scenario=scenario, rng=np.random.RandomState(42),
+             tae_runner=fun,
+             intensifier_kwargs=intensifier_kwargs)  # all arguments related to intensifier can be passed like this
 
     smac.optimize()
 
-    out_dir = scenario.output_dir_for_this_run
-
     history = smac.get_runhistory()
-    budget = [el[args.budget_param] for el in history.get_all_configs()]
-    values = [history.get_cost(conf) for conf in history.get_all_configs()]
-
-    # Iterate in case we are not 
-    if args.full_budget:
-        budget = [args.maxbudget for el in history.get_all_configs()]
-    else:
-        total_budget_spent = sum(budget)
-        i = 2
-        while total_budget_spent < args.total_budget: # Compute the total budget spent, and if not increase budget by a heuristic
-            print('Budget not fully spent: ' + str(total_budget_spent) + ' < ' + str(args.total_budget))
-            evals_per_budget = len(budget) / total_budget_spent
-            new_budget_in_evals = math.ceil((args.total_budget - total_budget_spent) * evals_per_budget)
-            print("Total budget in evals: " + str(new_budget_in_evals))
-            new_data = create_new_scenario(scen, out_dir, total_budget_in_evals + new_budget_in_evals)         # specify a new scenario
-            smac = SMAC4HPO(scenario=new_data['scenario'],         # Now we can initialize SMAC with the recovered objects 
-                        runhistory=new_data['runhistory'],
-                        stats=new_data['stats'],
-                        restore_incumbent=new_data['incumbent'],
-                        run_id=i)
-            smac.optimize()
-            history = smac.get_runhistory()
-            budget = [el[args.budget_param] for el in history.get_all_configs()]
-            values = [history.get_cost(conf) for conf in history.get_all_configs()]
-            total_budget_spent = sum(budget)
-            i = i + 1
-
-
-    values = values * args.objective_multiplier
-    df = pd.DataFrame({"budget": budget, "performance": values})
+    values = pd.DataFrame.from_records([[k.budget, v.cost] for k, v in history.data.items()])
+    values[1] = values[1] * args.objective_multiplier
+    values = values.rename(columns = {0: 'budget', 1: 'performance'})
 
     with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
-        pickle.dump(df, fh)  
+        pickle.dump(values, fh)  
 
 
 if __name__ == "__main__":

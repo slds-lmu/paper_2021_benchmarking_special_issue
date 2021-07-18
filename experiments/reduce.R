@@ -98,20 +98,24 @@ for (algo in algos) {
 
 # Also store the smashy results accordingly 
 path_orig_files = file.path("experiments", "results_sequential", "original_files")
-problem = "branin"
+problem = "lcbench"
 
-f = file.path(path_orig_files, problem, "results_baseline_lcbench_config_branin.rds") #paste0("results_lambda_", problem, ".rds"))
+f = file.path(path_orig_files, problem, "results_baseline_lcbench_config_lcbench.rds") #paste0("results_lambda_", problem, ".rds"))
 
-df = readRDS(f)
+df = as.data.table(readRDS(f))
 
 res = lapply(unique(df$repl), function(r) {
-	out = df[repl == r, c("fidelity", "y")]
-	names(out) = c("budget", "performance")
-	out$budget = exp(out$budget)
-	out
+	out = lapply(unique(df$task), function(t) {
+		out = df[repl == r & task == t, c("epoch", "val_cross_entropy")]
+		out$epoch = exp(out$epoch)
+		names(out) = c("budget", "performance")
+		newdata = data.table(problem = problem, task = t, nobjectives = 1, objectives_scalar = "val_cross_entropy", algorithm = "smashy_config_lcbench", algorithm_type = NA, eta = NA, full_budget = NA, .count = 1)
+		newdata$result = list(out)
+		return(newdata)
+	})
+	do.call(rbind, out)
 })
+res = do.call(rbind, res)
+res$job.id = -2000 - seq_len(nrow(res))
 
-tab_new = data.table(job.id = - 2000 - seq_len(length(res)), problem = "branin", task = NA, nobjectives = 1, objectives_scalar = "val_balanced_accuracy", algorithm = "smashy_config_lcbench", algorithm_type = NA, eta = NA, full_budget = NA, .count = 1)
-tab_new$result = res
-
-saveRDS(tab_new, file.path(path, problem, "smashy.rds"))
+saveRDS(res, file.path(path, "smashy.rds"))

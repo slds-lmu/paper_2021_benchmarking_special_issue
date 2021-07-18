@@ -98,6 +98,23 @@ compute_total_budget = function(bupper, blower, eta) {
   sum(unlist(out))
 }
 
+compute_total_budget = function(bupper, blower, eta) {
+  smax = floor(log(bupper / blower, eta))
+  B = (smax + 1) * bupper
+  brackets = seq(0, smax)
+
+  out = lapply(brackets, function(s) {
+    n = ceiling(B / bupper * eta^s / (s + 1))
+    r = bupper * eta^(-s)
+    out = lapply(seq(0, s), function(i) {
+      ni = floor(n * eta^(-i))
+      ri = r * eta^i
+      ni * ri
+    })
+    sum(unlist(out))
+  })
+  sum(unlist(out))
+}
 
 
 computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
@@ -136,7 +153,7 @@ computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
       })
       df_sub2 = do.call(rbind, df_sub2)
       names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
-      df_to_add = merge(df_sub, df_sub2[, c("job.id", "q", "perf_min_on_full_budget")], by = c("job.id", "q"), all.x = TRUE)
+      df_to_add = merge(df_sub, df_sub2[, c("q", "perf_min_on_full_budget")], by = c("q"), all.x = TRUE)
 
       if (nrow(dfn) > 0) {
         dfn = rbind(dfn, df_to_add)
@@ -149,7 +166,7 @@ computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
   })
 
   out = do.call(rbind, out)
-  out = out[- which(is.na(out$perf_min_on_full_budget)), ]
+  out = out[- which(is.na(out$problem)), ]
 
   # Comparison with randomsearch 
 

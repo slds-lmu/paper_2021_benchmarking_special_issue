@@ -61,7 +61,7 @@ submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 # Time: ~ 5 minutes (lcbench)
 #       ~ 90 minutes (rbv2_super)
 tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
-tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 50)
+tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 20)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
 
@@ -113,6 +113,8 @@ table(ijoin(tab, findSubmitted())[task %in% tasks, ]$algorithm)
 ###   - smac
 
 ### RBV2_SUPER (89 tasks)
+
+# TODO: RESUBMIT HPBSTER (budget is transformed into int, it does not make sense! )
 
 ### - Registry: reg_sequential (LRZ)
 ### - Test run (to get the time): 
