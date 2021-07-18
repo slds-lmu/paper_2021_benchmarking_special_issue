@@ -4,6 +4,8 @@
 
 smac_hb = function(data, job, instance, eta, algorithm_type, ...) {
 
+	source("experiments/helper.R")
+
 	ins = instance$ins$clone()
 	bid = ins$search_space$ids(tags = c("budget"))
 
