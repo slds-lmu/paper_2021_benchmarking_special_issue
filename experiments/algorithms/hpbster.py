@@ -143,7 +143,7 @@ class rbv2_super(Worker):
                 'info' (dict)
         """
         config.update({"task_id": self.task})
-        config.update({"trainsize": int(budget)})  # FIXME: budget trafo to match epoch range and int
+        config.update({"trainsize": budget})  # FIXME: budget trafo to match epoch range and int
         config.update({"repl": 10})  # Note: we have to use a fixed repl; 10 is the default
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)

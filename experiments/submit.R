@@ -14,7 +14,7 @@ tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "alg
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
 
-tosubmit = tab[problem == "lcbench", ]
+tosubmit = tab[problem == "rbv2_super", ]
 tosubmit = ijoin(tosubmit, findNotDone())
 tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
@@ -76,12 +76,12 @@ submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
 # 7. smac hb
-# Time: ~ 5 minutes (lcbench)
-#       ~ 120 minutes (rbv2_super)
+# Time: ~ X minutes (lcbench)
+#       ~ X minutes (rbv2_super)
 tosubmit_smac = tosubmit[algorithm == "smac_hb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
 tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 100)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
-submitJobs(tosubmit_smac, resources = resources.serial.default)
+submitJobs(tosubmit_smac[chunk == 1, ], resources = resources.serial.default)
 
 # 7. smac bohb
 # Time: ~ 5 minutes (lcbench)
