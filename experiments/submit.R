@@ -14,14 +14,12 @@ tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "alg
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
 
-tosubmit = tab[problem == "rbv2_super", ]
+tosubmit = tab[problem == "lcbench", ]
 tosubmit = ijoin(tosubmit, findNotDone())
 tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
 
 # 1. RANDOMSERACH (Budget factor 32)
-# Time: ~ 4 minutes (lcbench)
-#       ~ 90 - 120 minutes (rbv2_super; bc. of log-scale? )
 tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ]
 tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 15)
 
@@ -50,7 +48,7 @@ submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 # 4. HB
 # Time: ~ 0.5 minutes (lcbench)
-#       ~ 1.5 minutes (rbv2_super)
+#       ~ 3 minutes (rbv2_super)
 tosubmit_hpbster = tosubmit[algorithm == "hpbster_hb", ]
 tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 350)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
@@ -83,10 +81,11 @@ tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 100)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac[chunk == 1, ], resources = resources.serial.default)
 
+
 # 7. smac bohb
 # Time: ~ 5 minutes (lcbench)
 #       ~ 120 minutes (rbv2_super)
-tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_smac = tosubmit[algorithm == "smac_bohb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
 tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 6)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
@@ -111,6 +110,9 @@ table(ijoin(tab, findSubmitted())[task %in% tasks, ]$algorithm)
 # STATUS 13.07.2021
 
 ## SEQUENTIAL EXPERIMENTS
+
+# NEXT ONES TO SUBMIT: 
+# * SMAC HB / BOHB FOR LCBENCH AND RBV2SUPER
 
 ### BRANIN 
 
@@ -149,8 +151,8 @@ table(ijoin(tab, findSubmitted())[task %in% tasks, ]$algorithm)
 ###		- smac_full_budget (COULDN'T SUBMIT ALL YET)
 ###   - random_search
 ###   - mlrintermbo (BUG)
-###   - smac
 ### 	- mlrintermbo_full_budget (BUG)
+###   - smac
 
 
 ### LCBENCH (35 tasks)
@@ -158,13 +160,15 @@ table(ijoin(tab, findSubmitted())[task %in% tasks, ]$algorithm)
 ### - Registry: reg_sequential (LRZ)
 ### - Test run (to get the time): 
 ### - Completed: 
-### 	- randomsearch_full_budget
-###		- hpbster_hb
-###		- hpbster_bohb
-###		- smac_full_budget
-###		- mlr3hyperband
+### 	- randomsearch_full_budget: 5.5 minutes 
+###		- hpbster_hb: 0.58 minutes 
+###		- hpbster_bohb: 1.3 minutes
+###		- smac_full_budget: 5.9 minutes 
+###		- mlr3hyperband: 4.8 minutes 
 ### - Submitted: 
 ### - Not submitted:  
+###		- smac_hb: 1.4 minutes 
+###		- smac_bohb: 15 minutes 
 ###   - mlrintermbo_full_budget
 ###   - random_search
 ###   - smac

@@ -20,14 +20,14 @@ smac_hb = function(data, job, instance, eta, algorithm_type, ...) {
 	budget_lower = search_space_old$params[[bid]]$lower
 	budget_upper = search_space_old$params[[bid]]$upper
 
-	total_budget = ins$terminator$param_set$values$budget * PARALLELIZATION
+	total_budget = ins$terminator$param_set$values$budget # * PARALLELIZATION
 
 	budget_per_hb_run = compute_total_budget(budget_upper, budget_lower, eta)
 	evals_per_hb_run = compute_total_evals(budget_upper, budget_lower, eta)
 	total_number_of_evals = ceiling(total_budget / budget_per_hb_run * evals_per_hb_run * 1.1)
 
 	start_t = Sys.time()
-    out = system2('python', c("experiments/algorithms/smac_hyperband.py", 
+    out = system2('python -W ignore ', c("experiments/algorithms/smac_hyperband.py", 
     	" --alg ", algorithm_type, 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 
     	" --task ", instance$task, " --budget_param ",  bid, 

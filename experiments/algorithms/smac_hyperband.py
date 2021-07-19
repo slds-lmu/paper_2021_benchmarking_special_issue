@@ -149,12 +149,12 @@ def main(args):
     intensifier_kwargs = {'initial_budget': args.minbudget, 'max_budget': args.maxbudget, 'eta': args.eta}
     # To optimize, we pass the function to the SMAC-object
     if args.alg == "bohb":
-        smac = BOHB4HPO(scenario=scenario, rng=np.random.RandomState(42),
-                     tae_runner=fun,
+        smac = BOHB4HPO(scenario=scenario,
+                     tae_runner=fun, rng = np.random.RandomState(args.seed), 
                      intensifier_kwargs=intensifier_kwargs)  # all arguments related to intensifier can be passed like this
     else: 
-        smac = HB4AC(scenario=scenario, rng=np.random.RandomState(42),
-             tae_runner=fun,
+        smac = HB4AC(scenario=scenario,
+             tae_runner=fun, rng = np.random.RandomState(args.seed),
              intensifier_kwargs=intensifier_kwargs)  # all arguments related to intensifier can be passed like this
 
     smac.optimize()

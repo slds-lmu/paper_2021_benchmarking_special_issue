@@ -70,7 +70,7 @@ df = readRDS("experiments/results_sequential/prepared_files_for_analysis/lcbench
 # Analysis on a per task level 
 dfp = df[, .(mean_normalized_regret = mean(normalized_regret), lower = quantile(normalized_regret, 0.1), upper = quantile(normalized_regret, 0.9)), by = c("task", "algorithm", "q")]
 
-dfp_train = dfp[task %in% setDT(instances)[cfg == "lcbench" & test == FALSE, ]$level, ]
+dfp_train = dfp[task %in% setDT(instances)[cfg == "lcbench" & test == TRUE, ]$level, ]
 
 p = plotAggregatedLearningCurves(dfp_train, var = "mean_normalized_regret") + facet_wrap(vars(task), nrow = 4)
 p

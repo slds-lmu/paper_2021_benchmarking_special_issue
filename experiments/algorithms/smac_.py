@@ -33,7 +33,7 @@ import dask
 from distributed import Client
 
 class worker():
-    def __init__(self, problem, task, budget_param, objective, objective_multiplier, eta, minbudget, maxbudget, total_budget):
+    def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, full_budget, budget_on_log, total_budget):
         base = importr("base")
         self.problem = problem 
         self.task = task
@@ -42,8 +42,10 @@ class worker():
         self.multiplier = objective_multiplier
         self.minbudget = minbudget
         self.maxbudget = maxbudget
-        self.eta = eta
+        self.eta
+        self.full_budget = full_budget
         self.total_budget = total_budget
+        self.budget_on_log = budget_on_log
         self.mfsurrogates = importr("mfsurrogates")
         if problem in ["lcbench", "rbv2_super", "nb301"]:
             self.session = onnxruntime.InferenceSession("experiments/problems/" + problem + "/model.onnx")
@@ -197,6 +199,7 @@ def main(args):
                         runhistory=new_data['runhistory'],
                         stats=new_data['stats'],
                         restore_incumbent=new_data['incumbent'],
+                        rng = np.random.RandomState(args.seed), 
                         run_id=i)
             smac.optimize()
             history = smac.get_runhistory()
