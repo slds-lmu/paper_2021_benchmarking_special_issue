@@ -117,3 +117,8 @@ path = file.path(reg$file.dir, "external", jid, "results.pkl")
 df = as.data.table(pd$read_pickle(path))
 sum(df$budget)
 MAX_BUDGETS[[prob]]
+
+
+## SMAC (full budget)
+jid = tab[algorithm == "focussearch_full_budget" & problem == prob, ][1, ]$job.id
+out = testJob(jid) 

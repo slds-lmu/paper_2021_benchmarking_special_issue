@@ -14,7 +14,7 @@ tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "alg
 # Testing every version of algorithm / problem with full budget
 # tasks = c("126026", "126029", "189908", "7593")
 
-tosubmit = tab[problem == "rbv2_super", ]
+tosubmit = tab[problem == "lcbench", ]
 tosubmit = ijoin(tosubmit, findNotDone())
 tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
@@ -34,10 +34,9 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
 # 3. BOHB
 tosubmit_hpbster = tosubmit[algorithm == "hpbster_bohb", ]
-tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 50)
+tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 40)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
-
 
 
 # 4. HB
@@ -49,7 +48,7 @@ submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 # 5. mlr3hyperband (Budget factor 32)
 tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
-tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 20)
+tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 10)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
 
@@ -63,21 +62,21 @@ submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 # 7. smac hb
 tosubmit_smac = tosubmit[algorithm == "smac_hb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 100)
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 200)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
 # 7. smac bohb
 tosubmit_smac = tosubmit[algorithm == "smac_bohb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 20)
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 50)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
-# 9. Focussearch 
+# 9. Focussearch (Budget factor 32)
 tosubmit_fs = tosubmit[algorithm == "focussearch_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_fs$chunk = batchtools::chunk(tosubmit_fs$job.id, chunk.size = 1050)
+tosubmit_fs$chunk = batchtools::chunk(tosubmit_fs$job.id, chunk.size = 534)
 tosubmit_fs = tosubmit_fs[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_fs, resources = resources.serial.default)
 
@@ -91,22 +90,6 @@ submitJobs(tosubmit_fs, resources = resources.serial.default)
 # NEXT ONES TO SUBMIT: 
 # * SMAC HB / BOHB FOR LCBENCH AND RBV2SUPER
 
-### BRANIN 
-
-### - Registry: reg_branin (locally submitted)
-### - Completed: 
-###		-
-### - Submitted: 
-### 	- randomsearch_full_budget
-###		- mlr3hyperband
-### 	- mlrintermbo_full_budget
-###		- hpbster_hb
-###		- hpbster_bohb
-###		- smac_full_budget
-### - Not submitted:  
-###   - random_search
-###   - mlrintermbo
-###   - smac
 
 ### RBV2_SUPER (89 tasks)
 
@@ -114,18 +97,16 @@ submitJobs(tosubmit_fs, resources = resources.serial.default)
 
 ### - Registry: reg_sequential (LRZ)
 ### - Test run (to get the time): 
-###		- hpbster_bohb: 20 Minutes 
-###		- smac_full_budget: 120 minutes
+
 ### - Completed: 
 ###		- randomsearch_full_budget: 98 minutes 
 ### - Submitted: 
-###		- hpbster_hb: 300 minutes 
-###		- hpbster_bohb
-
-### 	- randomsearch_full_budget
-###		- mlr3hyperband 
+###		- hpbster_hb: 3.1 minutes 
+###		- hpbster_bohb: 20 Minutes / to be verified 
+###		- smac_full_budget: 120 minutes
+###		- mlr3hyperband: 101 minutes 
+###		- focussearch_full_budget: 1.2 minutes
 ### - Not submitted:  
-###		- smac_full_budget (COULDN'T SUBMIT ALL YET)
 ###   - random_search
 ###   - mlrintermbo (BUG)
 ### 	- mlrintermbo_full_budget (BUG)
@@ -148,19 +129,24 @@ submitJobs(tosubmit_fs, resources = resources.serial.default)
 ### - Submitted: 
 ### - Not submitted:  
 ###   - mlrintermbo_full_budget
+### 	- mlrintermbo
 ###   - random_search
 ###   - smac
-### 	- mlrintermbo
 
 
+### BRANIN 
 
-
-
-# Check the runtime of the different versions
-# mlrintermbo (full budget = TRUE): 	20 min
-# mlrintermbo (full_budget = FALSE): 	34 min
-# mlr3hyperband:  						7 sec
-# hpbster:		 						22 sec
-
-
-
+### - Registry: reg_branin (locally submitted)
+### - Completed: 
+###		-
+### - Submitted: 
+### 	- randomsearch_full_budget
+###		- mlr3hyperband
+### 	- mlrintermbo_full_budget
+###		- hpbster_hb
+###		- hpbster_bohb
+###		- smac_full_budget
+### - Not submitted:  
+###   - random_search
+###   - mlrintermbo
+###   - smac
