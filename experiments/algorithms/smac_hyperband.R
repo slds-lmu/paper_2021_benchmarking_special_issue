@@ -27,7 +27,7 @@ smac_hb = function(data, job, instance, eta, algorithm_type, ...) {
 	total_number_of_evals = ceiling(total_budget / budget_per_hb_run * evals_per_hb_run * 1.1)
 
 	start_t = Sys.time()
-    out = system2('python ', c("experiments/algorithms/smac_hyperband.py", 
+    out = system2('python', c("experiments/algorithms/smac_hyperband.py", 
     	" --alg ", algorithm_type, 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 
     	" --task ", instance$task, " --budget_param ",  bid, 
