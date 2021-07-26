@@ -5,7 +5,6 @@ reg = loadRegistry("reg_sequential", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
 
-
 done = ijoin(tab, findDone())
 done = done[, .SD[which.min(job.id)], by = c("algorithm", "problem")]
 res = reduceResultsDataTable(done$job.id, function(x) x$runtime)
@@ -27,8 +26,8 @@ ijoin(res, done)
 
 path = "experiments/results_sequential/prepared_files"
 
-prob = "lcbench"
-algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_hb", "hpbster_bohb", "smac_full_budget")
+prob = "branin"
+algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_hb", "hpbster_bohb", "smac_full_budget")#, "smac_hb", "smac_bohb")
 
 # Check if all the runs are complete
 sub_tab = tab[problem %in% prob & algorithm %in% algos, ]
@@ -48,7 +47,7 @@ for (algo in algos) {
 			x$archive[, c("budget", "performance")]
 		})
 
-		if (algo %in% c("hpbster_hb", "hpbster_bohb", "smac", "smac_full_budget")) {
+		if (algo %in% c("hpbster_hb", "hpbster_bohb", "smac", "smac_full_budget", "smac_hb", "smac_bohb")) {
 
 			library(reticulate)
 			pd = import("pandas")
@@ -67,7 +66,7 @@ for (algo in algos) {
 						df = as.data.table(df)
 						names(df)[which(names(df) == "loss")] = "performance"
 					} 
-					if (algo %in% c("smac", "smac_full_budget")) {
+					if (algo %in% c("smac", "smac_full_budget", "smac_bohb", "smac_hb")) {
 						df = as.data.table(pd$read_pickle(path))
 					}
 

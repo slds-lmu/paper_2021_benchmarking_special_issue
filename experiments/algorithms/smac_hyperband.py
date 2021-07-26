@@ -126,8 +126,7 @@ def main(args):
     # parser.add_argument("--multi.point", type=int, required=True)
     args = parser.parse_args(args)
 
-    logging.basicConfig(level=logging.INFO) 
-
+    logging.basicConfig(level=logging.WARNING)
     w = worker(problem=args.problem, task=args.task, budget_param=args.budget_param, objective=args.objective, objective_multiplier=args.objective_multiplier, minbudget = args.minbudget, maxbudget=args.maxbudget, eta = args.eta, total_budget=args.total_budget)
 
     cs = w.get_configspace()

@@ -20,7 +20,7 @@ tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
 
 # 1. RANDOMSERACH (Budget factor 32)
-tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ]
+(tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ])
 tosubmit_rs$chunk = chunk(tosubmit_rs$job.id, chunk.size = 15)
 submitJobs(tosubmit_rs, resources = resources.serial.default)
 
@@ -33,50 +33,50 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
 
 # 3. BOHB
-tosubmit_hpbster = tosubmit[algorithm == "hpbster_bohb", ]
-tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 40)
+(tosubmit_hpbster = tosubmit[algorithm == "hpbster_bohb", ])
+tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 20)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
 # 4. HB
-tosubmit_hpbster = tosubmit[algorithm == "hpbster_hb", ]
+(tosubmit_hpbster = tosubmit[algorithm == "hpbster_hb", ])
 tosubmit_hpbster$chunk = chunk(tosubmit_hpbster$job.id, chunk.size = 350)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
 # 5. mlr3hyperband (Budget factor 32)
-tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ]
+(tosubmit_hb = tosubmit[algorithm == "mlr3hyperband", ])
 tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 10)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
 
 
 # 6. smac
-tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 6)
+(tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ]) # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_smac$chunk = chunk(tosubmit_smac$job.id, chunk.size = 4)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
 # 7. smac hb
-tosubmit_smac = tosubmit[algorithm == "smac_hb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 200)
+(tosubmit_smac = tosubmit[algorithm == "smac_hb", ]) # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 100)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
 # 7. smac bohb
-tosubmit_smac = tosubmit[algorithm == "smac_bohb", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 50)
+(tosubmit_smac = tosubmit[algorithm == "smac_bohb", ]) # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 200)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
 # 9. Focussearch (Budget factor 32)
 tosubmit_fs = tosubmit[algorithm == "focussearch_full_budget", ] # multi.point = 1 only uses 1/32 of the budget than when it is run with multi.point NA
-tosubmit_fs$chunk = batchtools::chunk(tosubmit_fs$job.id, chunk.size = 534)
+tosubmit_fs$chunk = batchtools::chunk(tosubmit_fs$job.id, chunk.size = 267)
 tosubmit_fs = tosubmit_fs[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_fs, resources = resources.serial.default)
 
@@ -100,12 +100,14 @@ submitJobs(tosubmit_fs, resources = resources.serial.default)
 
 ### - Completed: 
 ###		- randomsearch_full_budget: 98 minutes 
-### - Submitted: 
-###		- hpbster_hb: 3.1 minutes 
 ###		- hpbster_bohb: 20 Minutes / to be verified 
-###		- smac_full_budget: 120 minutes
 ###		- mlr3hyperband: 101 minutes 
+### - Submitted: 
+###		- hpbster_hb: 3.1 minutes (3 runs missing)
+###		- smac_full_budget: 120 minutes (37 missing)
 ###		- focussearch_full_budget: 1.2 minutes
+###		- smac_hb: x minutes 
+###		- smac_bohb: x minutes  
 ### - Not submitted:  
 ###   - random_search
 ###   - mlrintermbo (BUG)
@@ -123,10 +125,10 @@ submitJobs(tosubmit_fs, resources = resources.serial.default)
 ###		- hpbster_bohb: 1.3 minutes
 ###		- smac_full_budget: 5.9 minutes 
 ###		- mlr3hyperband: 4.8 minutes 
-###		- smac_hb: 1.4 minutes 
-###		- smac_bohb: 15 minutes 
 ###		- focussearch_full_budget: 0.25 minutes
 ### - Submitted: 
+###		- smac_hb: 1.4 minutes (RUNNING, ERROR FIXED)
+###		- smac_bohb: 15 minutes  (RUNNING, ERROR FIXED)
 ### - Not submitted:  
 ###   - mlrintermbo_full_budget
 ### 	- mlrintermbo
