@@ -19,6 +19,7 @@ import logging
 import pickle
 import random
 import math
+import shutil
 
 class nb301(Worker):
     def __init__(self, objective, objective_multiplier, *args, sleep_interval=0, **kwargs):
@@ -199,11 +200,6 @@ class branin(Worker):
         return(cs)
 
 
-
-def compute_total_budget(res):
-    df = res.get_pandas_dataframe()[0]
-    return(sum(df['budget']))
-
 def main(args): 
     # logging.basicConfig(level=logging.DEBUG)
     parser = argparse.ArgumentParser(description = "Do Something")
@@ -224,15 +220,31 @@ def main(args):
     print(max_SH_iter)
     # args = parser.parse_args(['--problem', 'branin', '--tempdir', 'reg_temp/external/', '--task', 'NA', '--minbudget', '0.01', '--maxbudget', '1', '--eta', '3', '--fullbudget', '10', '--alg', 'hb', '--objective', 'y', '--objective_multiplier', '1'])
     # args = parser.parse_args(['--problem', 'nb301', '--tempdir', 'reg_temp/external/', '--task', 'NA', '--minbudget', '1', '--maxbudget', '52', '--eta', '3', '--fullbudget', '5000', '--alg', 'hb', '--objective', 'val_accuracy', '--objective_multiplier', '-1'])
-    # result_logger = hpres.json_result_logger(directory=args.tempdir, overwrite=True)
+    result_logger = hpres.json_result_logger(directory=args.tempdir, overwrite=True)
+
+    print(args.fullbudget)
 
     total_budget_spent = 0
     res = None
     # Bei ports randomisieren 
     randport = random.randrange(49152, 65535 + 1)
 
+    total_configs_evaluated = 0
+    total_budget_hb = 0
+    budgets = args.maxbudget * np.power(args.eta, -np.linspace(max_SH_iter-1, 0, max_SH_iter))
+    # compute the total number of evaluations
+    for s in range(max_SH_iter):
+        n0 = int(np.floor((max_SH_iter)/(s+1)) * args.eta**s)
+        ns = [max(int(n0*(args.eta**(-i))), 1) for i in range(s+1)]
+        total_configs_evaluated = total_configs_evaluated + sum(ns)
+        total_budget_per_iteration = [ns * budgets[(-s-1):]] 
+        total_budget_hb = total_budget_hb + np.sum(total_budget_per_iteration)
+
+    iterations_needed = math.ceil(args.fullbudget / total_budget_hb) * max_SH_iter
+
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=randport, working_directory=args.tempdir)
     NS.start()
+
     if args.problem == "nb301":
         w = nb301(sleep_interval=0, objective = args.objective, objective_multiplier = args.objective_multiplier, nameserver='127.0.0.1', nameserver_port = randport, run_id='example1')
     if args.problem == "lcbench":
@@ -244,21 +256,18 @@ def main(args):
 
     w.run(background=True)
 
-    while total_budget_spent < args.fullbudget:
-        if args.alg == "hb":
-            alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
-        if args.alg == "bohb":
-            alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res)# , result_logger=result_logger)
-        res = alg.run(n_iterations=max_SH_iter) # hand over number of brackets here
-        alg.shutdown(shutdown_workers = False)
-        total_budget_spent = compute_total_budget(res)
-        print(total_budget_spent)
+    if args.alg == "hb":
+        alg = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res, result_logger=result_logger)
+    if args.alg == "bohb":
+        alg = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', nameserver_port = randport, min_budget=args.minbudget, max_budget=args.maxbudget, eta = args.eta, previous_result = res, result_logger=result_logger)
+    res = alg.run(n_iterations = iterations_needed) # hand over number of brackets here
+    alg.shutdown(shutdown_workers = False)
 
-    alg.shutdown(shutdown_workers = True)
     NS.shutdown()    
 
-    with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
-        pickle.dump(res, fh)  
+    # Something super weird happens with the results / time stamps are mixed up, results are simply wrong! 
+    # with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
+    #     pickle.dump(res, fh)  
 
 if __name__ == "__main__":
     main(sys.argv[1:])

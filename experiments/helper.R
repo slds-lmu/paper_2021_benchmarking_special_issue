@@ -127,73 +127,71 @@ computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
   }
 
   out = fun(dirs, function(d) {
+    print(d)
     df = readRDS(d)
 
-    dfn = data.table()
+    results = df$result
+    jids = df$job.id
+    out = lapply(1:length(results), function(i) cbind(job.id = jids[i], results[[i]]))
+    out = do.call(rbind, out)
+    dh = setDT(out)[, budget_cum := cumsum(budget), by = c("job.id")]
+    # Budget in multiples of the maximum budget and on a logarithmic scale 
+    dh$budget_cum_log = log(dh$budget_cum / max(dh$budget), 10)
+    df_sub = lapply(quantiles, function(q) {
+      cbind(dh[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
+    })
+    df_sub = do.call(rbind, df_sub)
 
-    for (i in seq_len(nrow(df))) {
-      print(i)
-      dh = df[i, ]
-      # dh$multi.point = NULL
-      dh$result = NULL
-      dh = cbind(dh, df[i, ]$result[[1]])
+    df_sub2 = lapply(quantiles, function(q) {
+      dhs = dh[budget == max(dh$budget), ]
+      cbind(dhs[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
+    })
+    df_sub2 = do.call(rbind, df_sub2)
+    names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
 
-      dh = setDT(dh)
-      dh[, budget_cum := cumsum(budget)]
-      # Budget in multiples of the maximum budget and on a logarithmic scale 
-      dh$budget_cum_log = log(dh$budget_cum / max(dh$budget), 10)
-      df_sub = lapply(quantiles, function(q) {
-        cbind(dh[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
-      })
-      df_sub = do.call(rbind, df_sub)
+    df_to_add = merge(df_sub, df_sub2[, c("q", "perf_min_on_full_budget", "job.id")], by = c("q", "job.id"), all.x = TRUE)
 
-      df_sub2 = lapply(quantiles, function(q) {
-        cbind(dh[budget_cum_log <= q & budget == max(dh$budget), .SD[which.min(performance)], by = c("job.id")], q = q)
-      })
-      df_sub2 = do.call(rbind, df_sub2)
-      names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
-      df_to_add = merge(df_sub, df_sub2[, c("q", "perf_min_on_full_budget")], by = c("q"), all.x = TRUE)
+    # Add metadata 
+    dm = df
+    dm$result = NULL
+    dm = merge(dm, df_to_add, by = c("job.id"), all.y = TRUE)
 
-      if (nrow(dfn) > 0) {
-        dfn = rbind(dfn, df_to_add)
-      } else {
-        dfn = df_to_add
-      }
-    }
-
-    return(dfn)
+    return(dm)
   })
 
-  out = do.call(rbind, out)
-  out = out[- which(is.na(out$problem)), ]
+  out2 = do.call(rbind, out)
+  if (any(is.na(out2$problem)))
+    out2 = out2[- which(is.na(out2$problem)), ]
 
   # Comparison with randomsearch 
 
   # Overall best result achieved by randomsearch per task 
-  if (out$problem[1] == "branin") {
-    out$y_min = 0.3978874
-    out$y_max = 485.3732
+  if (out2$problem[1] == "branin") {
+    out2$y_min = 0.3978874
+    out2$y_max = 485.3732
   } else {
     # Compute the overall minimum and maximum per problem 
-    minmax = out[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
-    out = merge(out, minmax, all.x = TRUE, by = c("task"))
+    minmax = out2[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+    out2 = merge(out2, minmax, all.x = TRUE, by = c("task"))
   }
 
-  out$normalized_regret = (out$performance - out$y_min) / (out$y_max - out$y_min)
+  out2$normalized_regret = (out2$performance - out2$y_min) / (out2$y_max - out2$y_min)
 
-  return(out)
+  return(out2)
 }
 
 
 
 
-plotAggregatedLearningCurves = function(df, var = "perf_mean", y_name = NULL) {
+plotAggregatedLearningCurves = function(df, var = "perf_mean", y_name = NULL, se = FALSE) {
 
   if (is.null(y_name)) {
     y_name = var
   }
 
   p = ggplot(data = df, aes_string(x = "q", y = var, colour = "algorithm", fill = "algorithm")) 
+  if (se)
+    p = p + geom_ribbon(aes(x = q, ymin = lower, ymax = upper, fill = algorithm), alpha = 0.25, colour = NA)
   p = p + geom_line()
   # p = p + geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.1, colour = NA)
   p = p + theme_bw()
