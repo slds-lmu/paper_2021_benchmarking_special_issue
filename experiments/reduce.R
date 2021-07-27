@@ -26,7 +26,7 @@ ijoin(res, done)
 
 path = "experiments/results_sequential/prepared_files"
 
-prob = "branin"
+prob = "lcbench"
 algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_hb", "hpbster_bohb", "smac_full_budget")#, "smac_hb", "smac_bohb")
 
 # Check if all the runs are complete
@@ -52,32 +52,46 @@ for (algo in algos) {
 			library(reticulate)
 			pd = import("pandas")
 
-			updates = lapply(res$job.id, function(jid) {
+			updates = lapply(ids$job.id, function(jid) {
+
+				print(jid)
 				
 				df = NULL
+				path = file.path(reg$file.dir, "external", jid)
 
-				# read the result 
-				path = file.path(reg$file.dir, "external", jid, "results.pkl")
-
-				if (file.exists(path)) {
-
-					if (algo %in% c("hpbster_hb", "hpbster_bohb")) {
-						df = pd$read_pickle(path)$get_pandas_dataframe()
-						df = as.data.table(df)
+				if (algo %in% c("hpbster_hb", "hpbster_bohb")) {
+					
+					library(jsonlite)
+					library(dplyr)	
+					
+					if (file.exists(file.path(path, "results.pkl"))) {
+						df = readLines(file.path(path, "results.json")) %>% lapply(fromJSON)
+						df = lapply(df, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], budget = x[[2]], loss = x[[4]]$loss, as.data.frame(t(unlist(x[[3]])))))
+						configs = readLines(file.path(path, "configs.json")) %>% lapply(fromJSON)
+						configs = lapply(configs, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], as.data.frame(t(unlist(x[[2]])))))
+						df = do.call(rbind, df)
+						configs = do.call(rbind, configs)
+						df = merge(df, configs, all.x = TRUE, by = c("cid1", "cid2", "cid3"))
+						df = df[order(df$submitted, df$cid1, df$cid3), ]
 						names(df)[which(names(df) == "loss")] = "performance"
-					} 
-					if (algo %in% c("smac", "smac_full_budget", "smac_bohb", "smac_hb")) {
-						df = as.data.table(pd$read_pickle(path))
+						df$budget = round(df$budget) # Correction to match the actual budget 
+					} else {
+						warning(paste0("Results file does not exist for ", jid))
 					}
+				} 
 
-					if (tab[job.id == jid, ]$objectives == "val_accuracy")
-						df$performance = (-1) * df$performance
-
-					df = df[, c("budget", "performance")]
-				} else {
-					warning(paste0("Results file does not exist for ", jid))
+				if (algo %in% c("smac", "smac_full_budget", "smac_bohb", "smac_hb")) {
+					if (file.exists(file.path(path, "results.pkl"))) {
+						df = as.data.table(pd$read_pickle(file.path(path, "results.pkl")))
+						df$budget = round(df$budget)
+					} else {
+						warning(paste0("Results file does not exist for ", jid))
+					}
 				}
-
+					
+				if (tab[job.id == jid, ]$objectives == "val_accuracy")
+					df$performance = (-1) * df$performance
+				
 				return(df)
 			})	
 

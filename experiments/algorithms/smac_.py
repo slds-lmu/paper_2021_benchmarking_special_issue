@@ -42,7 +42,6 @@ class worker():
         self.multiplier = objective_multiplier
         self.minbudget = minbudget
         self.maxbudget = maxbudget
-        self.eta
         self.full_budget = full_budget
         self.total_budget = total_budget
         self.budget_on_log = budget_on_log
@@ -160,13 +159,15 @@ def main(args):
     scen = {"run_obj": "quality",  # we optimize quality (alternatively runtime)
                          "runcount-limit": total_budget_in_evals,  
                          "cs": cs,  # configuration space
-                         "deterministic": "true", 
+                         "deterministic": "false", 
                          "memory_limit": 2048, 
                          "wallclock-limit": 2600 * 48,
                          "output_dir": args.tempdir
                          }
 
     scenario = Scenario(scen)
+
+    np.random.seed(args.seed)
 
     print("Optimizing!")
     smac = SMAC4HPO(scenario = scenario,

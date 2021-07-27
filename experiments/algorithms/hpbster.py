@@ -96,7 +96,7 @@ class lcbench(Worker):
                 'info' (dict)
         """
         config.update({"OpenML_task_id": self.task})
-        config.update({"epoch": int(budget)})  # FIXME: budget trafo to match epoch range and int
+        config.update({"epoch": int(np.round(budget))}) # Do ceiling: rounding down causes strange behavior   # FIXME: budget trafo to match epoch range and int
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
         li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       
@@ -240,7 +240,9 @@ def main(args):
         total_budget_per_iteration = [ns * budgets[(-s-1):]] 
         total_budget_hb = total_budget_hb + np.sum(total_budget_per_iteration)
 
+    print(total_budget_hb)
     iterations_needed = math.ceil(args.fullbudget / total_budget_hb) * max_SH_iter
+    print(iterations_needed)
 
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=randport, working_directory=args.tempdir)
     NS.start()

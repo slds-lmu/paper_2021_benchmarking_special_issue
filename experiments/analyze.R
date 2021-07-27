@@ -15,12 +15,12 @@ prob = "branin"
 path = file.path("experiments/results_sequential/prepared_files", prob)
 dirs = list.files(path, pattern = ".rds", full.names = TRUE)
 
-df = computeDatasetForAnalysis(dirs, quantiles = seq(4, 2, by = 0.1), parallel = TRUE)
+df = computeDatasetForAnalysis(dirs, quantiles = seq(-4, 2, by = 0.1), parallel = TRUE)
 # saveRDS(df, file.path("experiments/results_sequential/prepared_files_for_analysis", prob, "learning_curves.rds"))
 # readRDS(file.path("experiments/results_sequential/prepared_files_for_analysis", prob, "learning_curves.rds"))
 
 # Aggregate over experiments 
-dfp = df[, .(mean_normalized_regret = mean(normalized_regret), lower = quantile(normalized_regret, 0.1), upper = quantile(normalized_regret, 0.9)), by = c("task", "algorithm_nexps", "q")]
+dfp = df[, .(mean_normalized_regret = mean(normalized_regret), lower = quantile(normalized_regret, 0.1), upper = quantile(normalized_regret, 0.9)), by = c("task", "algorithm", "q")]
 
 p = plotAggregatedLearningCurves(dfp, var = "mean_normalized_regret")
 p = p + ggtitle("Branin") # + theme(legend.direction = "horizontal", legend.position = "bottom")
@@ -67,8 +67,12 @@ dirs = list.files(path, pattern = ".rds", full.names = TRUE)
 instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds")
 
 # df = computeDatasetForAnalysis(dirs, quantiles = seq(-2, 4, by = 0.1))
-# saveRDS(out2, "experiments/results_sequential/prepared_files_for_analysis/lcbench/learning_curves.rds")
+# saveRDS(df, "experiments/results_sequential/prepared_files_for_analysis/lcbench/learning_curves.rds")
 df = readRDS("experiments/results_sequential/prepared_files_for_analysis/lcbench/learning_curves.rds")
+# df$algorithm_type = unlist(lapply(df$algorithm_type, function(x) strsplit(x, "_")[[1]][1]))
+# df[algorithm == "mlr3hyperband", ]$algorithm_type = "hb"
+# df[algorithm == "randomsearch_full_budget", ]$algorithm_type = "randomsearch"
+# df[algorithm == "smac_full_budget", ]$algorithm_type = "smac"
 
 # Analysis on a per task level 
 dfp = df[, .(mean_normalized_regret = mean(normalized_regret), sd = sd(normalized_regret), n = .N), by = c("task", "algorithm", "q")]
@@ -77,7 +81,7 @@ dfp$lower = dfp$mean - 2 * dfp$sd / sqrt(dfp$n)
 
 # Compute budget distribution
 dfs = lapply(c("smac_bohb", "smac_hb", "mlr3hyperband", "hpbster_hb", "hpbster_bohb", "smashy"), function(alg) {
-  cbind(alg, readRDS(file.path("experiments/results_sequential/prepared_files", prob, paste0(alg, ".rds")))[1, ]$result[[1]])
+  cbind(alg, readRDS(file.path("experiments/results_sequential/prepared_files", prob, paste0(alg, ".rds")))[1, ]$result[[1]])[, c("alg", "budget", "performance")]
 })
 dfs = do.call(rbind, dfs)
 dfs = dfs[, iter := 1:.N, by = c("alg")]
@@ -86,11 +90,11 @@ dfs = dfs[budget_cum_sum <= 12480, ]
 
 p = ggplot(data = dfs, aes(x = budget, y = ..density..)) + geom_histogram() + facet_wrap(vars(alg), nrow = 2)
 p = p + theme_bw()
-ggsave(file.path("experiments", "results_sequential", "figures", "budget_distribution.png"))
+ggsave(file.path("experiments", "results_sequential", "figures", "budget_distribution.png"), width = 12, height = 6)
 
 p = ggplot(data = dfs[iter <= 200, ], aes(x = iter, y = budget)) + geom_line() + facet_wrap(vars(alg), nrow = 2)
 p = p + theme_bw()
-ggsave(file.path("experiments", "results_sequential", "figures", "budget_allocation.png"))
+ggsave(file.path("experiments", "results_sequential", "figures", "budget_allocation.png"), width = 12, height = 6)
 
 
 for (var in c("test", "train")) {
@@ -103,18 +107,35 @@ for (var in c("test", "train")) {
   tt = var == "test"
 
   dfp_train = dfp[task %in% setDT(instances)[cfg == prob & test == tt, ]$level, ]
-
-  p = plotAggregatedLearningCurves(dfp_train, var = "mean_normalized_regret", se = FALSE) + facet_wrap(vars(task), nrow = 4)
-  ggsave(file.path(store_path, paste0(var, "_instances.png")), p, width = 12, height = 6)
-
   dfp_train_sub = dfp_train[, .(mean_normalized_regret_over_tasks = mean(mean_normalized_regret)), by = c("algorithm", "q")]
-  p = plotAggregatedLearningCurves(dfp_train_sub, var = "mean_normalized_regret_over_tasks", se = FALSE) 
-  ggsave(file.path(store_path, paste0(var, "_across_instances.png")), p, width = 8, height = 4)
+
+  # HB vs. SMAC / RANDOMSEARCH
+  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "hpbster_hb", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret_over_tasks", se = FALSE) 
+  p = p + ggtitle(paste0("Mean Normalized Regret across Tasks (LCBench ", var,")"))
+  ggsave(file.path(store_path, paste0(var, "_across_instances_bohb_hb_rs_randomsearch_variants.png")), p, width = 8, height = 4)
+
+  # Comparison of HB implementations
+  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_hb", "smac_hb", "mlr3hyperband"), ], var = "mean_normalized_regret_over_tasks", se = FALSE) 
+  p = p + ggtitle(paste0("Mean Normalized Regret across Tasks (LCBench ", var,")"))
+  ggsave(file.path(store_path, paste0(var, "_across_instances_hb_variants.png")), p, width = 8, height = 4)
+
+  # Comparison of BOHB implementations
+  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "smac_bohb"), ], var = "mean_normalized_regret_over_tasks", se = FALSE) 
+  p = p + ggtitle(paste0("Mean Normalized Regret across Tasks (LCBench ", var,")"))
+  ggsave(file.path(store_path, paste0(var, "_across_instances_bohb_variants.png")), p, width = 8, height = 4)
+
+  # Comparison of BOHB, HB, SMASHY, RS & SMAC implementations
+  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "hpbster_hb", "smashy_config_lcbench", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret_over_tasks", se = FALSE) 
+  p = p + ggtitle(paste0("Mean Normalized Regret across Tasks (LCBench ", var,")"))
+  ggsave(file.path(store_path, paste0(var, "_across_instances_variants.png")), p, width = 8, height = 4)
+
+  p = plotAggregatedLearningCurves(dfp_train[algorithm %in% c("hpbster_hb", "hpbster_bohb", "smashy_config_lcbench", "smac_full_budget", "randomsearch_full_budget"), ], var = "mean_normalized_regret", se = FALSE) + facet_wrap(vars(task), ncol = 9)
+  ggsave(file.path(store_path, paste0(var, "_instances.png")), p, width = 18, height = 6)
 
   # Per problem visualize the outcome 
   for (i in instances[instances$test == tt & cfg == "lcbench", ]$level) {
 
-    p = plotAggregatedLearningCurves(dfp[task == i, ], var = "mean_normalized_regret", se = TRUE)
+    p = plotAggregatedLearningCurves(dfp[task == i & algorithm %in% c("hpbster_bohb", "hpbster_hb", "smashy_config_lcbench", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret", se = TRUE) + ggtitle(paste0("LCBench, instance ", i))
     
     store_path_sub = file.path(store_path, "individual")
 
@@ -122,9 +143,10 @@ for (var in c("test", "train")) {
       dir.create(store_path_sub, recursive = TRUE)
 
     ggsave(file.path(store_path_sub, paste0(i, ".png")), p, width = 8, height = 4)
-
   }
 }
+
+
 
 
 

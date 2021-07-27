@@ -73,7 +73,7 @@ class worker():
         if self.problem in ["lcbench", "rbv2_super", "nb301"]:
             if self.problem in ['lcbench']: 
                 config.update({"OpenML_task_id": self.task}) 
-                config.update({self.budget_param: int(budget)}) 
+                config.update({self.budget_param: int(round(budget))}) 
             if self.problem in ['rbv2_super']:
                 config.update({"task_id": self.task})
                 config.update({"repl": 10})  # Note: we have to use a fixed repl; 10 is the default

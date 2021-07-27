@@ -24,7 +24,7 @@ switch(SETUP,
     	# registry name for storing files on drive 
 		registry_name = "reg_temp"
 		# replications
-		REPLS = 1L 
+		REPLS = 10L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
 		B_MULTIPLIER = 1 
 		# PARALELLIZATION FACTOR
@@ -34,7 +34,7 @@ switch(SETUP,
 		# do never overwrite registry
 		OVERWRITE = FALSE
 		# termination criterion for each run
-		registry_name = "reg_branin"
+		registry_name = "reg_sequential"
 		# replications
 		REPLS = 30L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER

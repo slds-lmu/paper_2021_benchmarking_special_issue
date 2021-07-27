@@ -134,6 +134,7 @@ computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
     jids = df$job.id
     out = lapply(1:length(results), function(i) cbind(job.id = jids[i], results[[i]]))
     out = do.call(rbind, out)
+    out = out[, c("job.id", "budget", "performance")]
     dh = setDT(out)[, budget_cum := cumsum(budget), by = c("job.id")]
     # Budget in multiples of the maximum budget and on a logarithmic scale 
     dh$budget_cum_log = log(dh$budget_cum / max(dh$budget), 10)
