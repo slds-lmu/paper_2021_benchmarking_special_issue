@@ -52,7 +52,7 @@ for (algo in algos) {
 			library(reticulate)
 			pd = import("pandas")
 
-			updates = lapply(ids$job.id, function(jid) {
+			updates = lapply(res$job.id, function(jid) {
 
 				print(jid)
 				

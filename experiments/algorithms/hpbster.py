@@ -96,7 +96,7 @@ class lcbench(Worker):
                 'info' (dict)
         """
         config.update({"OpenML_task_id": self.task})
-        config.update({"epoch": int(np.round(budget))}) # Do ceiling: rounding down causes strange behavior   # FIXME: budget trafo to match epoch range and int
+        config.update({"epoch": int(np.round(budget))}) # Do rounding: "int" causes strange behavior   # FIXME: budget trafo to match epoch range and int
         xdt = pd.DataFrame.from_dict([config])
         xdt = pandas2ri.py2rpy(xdt)
         li_ = self.mfsurrogates.convert_for_onnx(xdt, data_order = self.data_order, param_set = self.param_set, trafo_dict = self.trafo_dict)       

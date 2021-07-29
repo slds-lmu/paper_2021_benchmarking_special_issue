@@ -132,73 +132,80 @@ computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
 
     results = df$result
     jids = df$job.id
-    out = lapply(1:length(results), function(i) cbind(job.id = jids[i], results[[i]]))
+    out = lapply(1:length(results), function(i) {
+      outd = cbind(job.id = jids[i], algorithm = df[i, ]$algorithm, task = df[i, ]$task, problem = df[i, ]$problem, results[[i]][, c("budget", "performance")])
+      outd = as.data.table(outd)
+      outd = outd[, budget_cum := cumsum(budget), by = c("job.id")]
+      outd = outd[budget_cum <= 30 * 9 * 52, ]
+      outd = outd[, perfmin := cummin(performance), by = c("job.id")]
+    })
     out = do.call(rbind, out)
-    out = out[, c("job.id", "budget", "performance")]
-    dh = setDT(out)[, budget_cum := cumsum(budget), by = c("job.id")]
+
+    df = NULL
+
     # Budget in multiples of the maximum budget and on a logarithmic scale 
-    dh$budget_cum_log = log(dh$budget_cum / max(dh$budget), 10)
-    df_sub = lapply(quantiles, function(q) {
-      cbind(dh[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
-    })
-    df_sub = do.call(rbind, df_sub)
+    out$budget_cum_log = log(out$budget_cum / max(out$budget), 10)
+    # df_sub = lapply(quantiles, function(q) {
+    #   cbind(dh[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
+    # })
+    # df_sub = do.call(rbind, df_sub)
 
-    df_sub2 = lapply(quantiles, function(q) {
-      dhs = dh[budget == max(dh$budget), ]
-      cbind(dhs[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
-    })
-    df_sub2 = do.call(rbind, df_sub2)
-    names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
+    # df_sub2 = lapply(quantiles, function(q) {
+    #   dhs = dh[budget == max(dh$budget), ]
+    #   cbind(dhs[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
+    # })
+    # df_sub2 = do.call(rbind, df_sub2)
+    # names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
 
-    df_to_add = merge(df_sub, df_sub2[, c("q", "perf_min_on_full_budget", "job.id")], by = c("q", "job.id"), all.x = TRUE)
+    # df_to_add = merge(df_sub, df_sub2[, c("q", "perf_min_on_full_budget", "job.id")], by = c("q", "job.id"), all.x = TRUE)
 
     # Add metadata 
-    dm = df
-    dm$result = NULL
-    dm = merge(dm, df_to_add, by = c("job.id"), all.y = TRUE)
+    # dm = df
+    # dm$result = NULL
+    # dm = merge(dm, df_to_add, by = c("job.id"), all.y = TRUE)
 
-    return(dm)
+    return(out)
   })
 
-  out2 = do.call(rbind, out)
-  if (any(is.na(out2$problem)))
-    out2 = out2[- which(is.na(out2$problem)), ]
+  out = do.call(rbind, out)
+  
+  # if (any(is.na(out2$problem)))
+  #   out2 = out2[- which(is.na(out2$problem)), ]
 
   # Comparison with randomsearch 
 
   # Overall best result achieved by randomsearch per task 
-  if (out2$problem[1] == "branin") {
-    out2$y_min = 0.3978874
-    out2$y_max = 485.3732
+  if (out$problem[1] == "branin") {
+    out$y_min = 0.3978874
+    out$y_max = 485.3732
   } else {
     # Compute the overall minimum and maximum per problem 
-    minmax = out2[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
-    out2 = merge(out2, minmax, all.x = TRUE, by = c("task"))
+    minmax = out[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+    out = merge(out, minmax, all.x = TRUE, by = c("task"))
   }
 
-  out2$normalized_regret = (out2$performance - out2$y_min) / (out2$y_max - out2$y_min)
+  out$normalized_regret = (out$perfmin - out$y_min) / (out$y_max - out$y_min)
 
-  return(out2)
+  return(out)
 }
 
 
 
 
-plotAggregatedLearningCurves = function(df, var = "perf_mean", y_name = NULL, se = FALSE) {
+plotAggregatedLearningCurves = function(df, var = "perf_mean", x = "budget", y_name = NULL, se = FALSE) {
 
   if (is.null(y_name)) {
     y_name = var
   }
 
-  p = ggplot(data = df, aes_string(x = "q", y = var, colour = "algorithm", fill = "algorithm")) 
+  p = ggplot(data = df, aes_string(x = x, y = var, colour = "algorithm", fill = "algorithm")) 
   if (se)
     p = p + geom_ribbon(aes(x = q, ymin = lower, ymax = upper, fill = algorithm), alpha = 0.25, colour = NA)
   p = p + geom_line()
   # p = p + geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.1, colour = NA)
   p = p + theme_bw()
-  p = p + scale_x_continuous(breaks = seq(0, 4, by = 1),
-          labels= 10^seq(0, 4))
-  p = p + xlab("Budget spent (in multiples of full budget)")
+  # p = p + scale_x_continuous(breaks = seq(0, 4, by = 1),
+  #         labels= 10^seq(0, 4))
   p = p + ylab(y_name)
   p
 }
