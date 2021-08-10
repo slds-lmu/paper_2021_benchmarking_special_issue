@@ -26,7 +26,7 @@ switch(SETUP,
 		# replications
 		REPLS = 10L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
-		B_MULTIPLIER = 1 
+		B_MULTIPLIER = 1L
 		# PARALELLIZATION FACTOR
 		PARALLELIZATION = 4L
 	},

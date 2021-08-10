@@ -120,22 +120,22 @@ for (var in c("test", "train")) {
   ggsave(file.path(store_path, paste0(var, "_across_instances_hb_variants.png")), p, width = 8, height = 4)
 
   # Comparison of BOHB implementations
-  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "smac_bohb"), ], var = "mean_normalized_regret_over_tasks", se = FALSE) 
+  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "smac_bohb"), ], var = "mean_normalized_regret_over_tasks", x = "budget_cum_log", se = FALSE) 
   p = p + ggtitle(paste0("Mean Normalized Regret across Tasks (LCBench ", var,")"))
   ggsave(file.path(store_path, paste0(var, "_across_instances_bohb_variants.png")), p, width = 8, height = 4)
 
   # Comparison of BOHB, HB, SMASHY, RS & SMAC implementations
-  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "hpbster_hb", "smashy_config_lcbench", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret_over_tasks", se = FALSE) 
+  p = plotAggregatedLearningCurves(dfp_train_sub[algorithm %in% c("hpbster_bohb", "hpbster_hb", "smashy_config_lcbench", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret_over_tasks", x = "budget_cum_log", se = FALSE) 
   p = p + ggtitle(paste0("Mean Normalized Regret across Tasks (LCBench ", var,")"))
   ggsave(file.path(store_path, paste0(var, "_across_instances_variants.png")), p, width = 8, height = 4)
 
-  p = plotAggregatedLearningCurves(dfp_train[algorithm %in% c("hpbster_hb", "hpbster_bohb", "smashy_config_lcbench", "smac_full_budget", "randomsearch_full_budget"), ], var = "mean_normalized_regret", se = FALSE) + facet_wrap(vars(task), ncol = 9)
+  p = plotAggregatedLearningCurves(dfp_train[algorithm %in% c("hpbster_hb", "hpbster_bohb", "smashy_config_lcbench", "smac_full_budget", "randomsearch_full_budget"), ], var = "mean_normalized_regret", x = "budget_cum_log", se = FALSE) + facet_wrap(vars(task), ncol = 9)
   ggsave(file.path(store_path, paste0(var, "_instances.png")), p, width = 18, height = 6)
 
   # Per problem visualize the outcome 
   for (i in instances[instances$test == tt & cfg == "lcbench", ]$level) {
 
-    p = plotAggregatedLearningCurves(dfp[task == i & algorithm %in% c("hpbster_bohb", "hpbster_hb", "smashy_config_lcbench", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret", se = TRUE) + ggtitle(paste0("LCBench, instance ", i))
+    p = plotAggregatedLearningCurves(dfp[task == i & algorithm %in% c("hpbster_bohb", "hpbster_hb", "smashy_config_lcbench", "randomsearch_full_budget", "smac_full_budget"), ], var = "mean_normalized_regret", x = "budget_cum_log", se = TRUE) + ggtitle(paste0("LCBench, instance ", i))
     
     store_path_sub = file.path(store_path, "individual")
 

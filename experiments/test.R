@@ -60,12 +60,12 @@ assert_true(sum(out$archive$budget) >= MAX_BUDGETS[[prob]])
 
 
 ## hpbster_hb / bohb
-jid = tab[algorithm == "hpbster_bohb" & problem == prob, ][1, ]$job.id
+jid = tab[algorithm == "hpbster_hb" & problem == prob, ][1, ]$job.id
 out = testJob(jid) 
 # Read the outcome
 library(reticulate)
 pd = import("pandas")
-path = file.path(reg$file.dir, "external", jid, "results.pkl")
+path = file.path(reg$file.dir, "external", jid, "results.json")
 df = pd$read_pickle(path)$get_pandas_dataframe()
 df = as.data.table(df)
 names(df)[which(names(df) == "loss")] = "performance"
@@ -122,3 +122,5 @@ MAX_BUDGETS[[prob]]
 ## SMAC (full budget)
 jid = tab[algorithm == "focussearch_full_budget" & problem == prob, ][1, ]$job.id
 out = testJob(jid) 
+
+
