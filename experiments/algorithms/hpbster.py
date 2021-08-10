@@ -238,7 +238,7 @@ def main(args):
         if args.alg == "bohb":
             ns = [32 for i in range(s+1)]
         else:
-            ns = [max(int(n0*(eta**(-i))), 1) for i in range(s+1)]        
+            ns = [max(int(n0*(args.eta**(-i))), 1) for i in range(s+1)]        
         total_configs_evaluated = total_configs_evaluated + sum(ns)
         total_budget_per_iteration = [ns * budgets[(-s-1):]] 
         total_budget_hb = total_budget_hb + np.sum(total_budget_per_iteration)
