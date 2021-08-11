@@ -344,8 +344,10 @@ results_rbv2_super_config_lcbench = readRDS("results_agg/results_agg_rbv2_super_
 results_rbv2_super_config_rbv2_super = readRDS("results_agg/results_agg_rbv2_super_config_rbv2_super.rds")
 results_rbv2_super_config_branin = readRDS("results_agg/results_agg_rbv2_super_config_branin.rds")
 
-lambda_lcbench = readRDS("irace_instance_lcbench.rds")$result
-lambda_rbv2_super = readRDS("irace_instance_rbv2.rds")$result
+lambda_lcbench = readRDS("irace_instance_lcbench.rds")$result_x_domain
+lambda_lcbench$surrogate_learner = lambda_lcbench$surrogate_learner$id
+lambda_rbv2_super = readRDS("irace_instance_rbv2.rds")$result_x_domain
+lambda_rbv2_super$surrogate_learner = lambda_rbv2_super$surrogate_learner$id
 
 # Define UI for dataset viewer app ----
 ui = fluidPage(
@@ -411,17 +413,14 @@ server = function(input, output) {
 
   #  ---- create plot
   output$view = renderPlot({
-    on_log_scale = c("budget_log_step", "mu", "filter_factor_first", "filter_factor_last", "filter_select_per_tournament", "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end")
-    integers = c("mu", "filter_select_per_tournament", "filter_select_per_tournament.end")
     data = datasetInput()
     baseline = data[["baseline"]]
     factor = factorInput()
     lambda = lambdaInput()
-    if (factor == "surrogate_turned_off") {
-      baseline_val = "surrogate_turned_on"
+    baseline_val = if (factor == "surrogate_turned_off") {
+      "surrogate_turned_on"
     } else {
-      baseline_val = if (factor %in% on_log_scale) exp(lambda[[factor]]) else lambda[[factor]]
-      if (factor %in% integers) baseline_val = as.integer(round(baseline_val, 0))
+      lambda[[factor]]
     }
     baseline[, (factor) := baseline_val]
     data_factor = data[[factor]]
