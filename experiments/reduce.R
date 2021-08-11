@@ -64,7 +64,7 @@ for (algo in algos) {
 					library(jsonlite)
 					library(dplyr)	
 					
-					if (file.exists(file.path(path, "results.pkl"))) {
+					if (file.exists(file.path(path, "results.json"))) {
 						df = readLines(file.path(path, "results.json")) %>% lapply(fromJSON)
 						df = lapply(df, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], budget = x[[2]], loss = x[[4]]$loss, as.data.frame(t(unlist(x[[3]])))))
 						configs = readLines(file.path(path, "configs.json")) %>% lapply(fromJSON)

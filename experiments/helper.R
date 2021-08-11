@@ -78,6 +78,23 @@ readProblem = function(data, job, task, objectives, ...) {
   return(list(name = data$model_name, ins = ins, task = task)) 
 }
 
+compute_brackets = function(bupper, blower, eta) {
+  smax = floor(log(bupper / blower, eta))
+  B = (smax + 1) * bupper
+  brackets = seq(0, smax)
+
+  out = lapply(brackets, function(s) {
+    n = ceiling(B / bupper * eta^s / (s + 1))
+    r = bupper * eta^(-s)
+    out = lapply(seq(0, s), function(i) {
+      ni = floor(n * eta^(-i))
+      ri = r * eta^i
+      data.frame(ni = ni, ri = ri)
+    })
+    do.call(rbind, out)
+  })
+}
+
 
 compute_total_budget = function(bupper, blower, eta) {
   smax = floor(log(bupper / blower, eta))
@@ -200,7 +217,7 @@ plotAggregatedLearningCurves = function(df, var = "perf_mean", x = "budget", y_n
 
   p = ggplot(data = df, aes_string(x = x, y = var, colour = "algorithm", fill = "algorithm")) 
   if (se)
-    p = p + geom_ribbon(aes(x = q, ymin = lower, ymax = upper, fill = algorithm), alpha = 0.25, colour = NA)
+    p = p + geom_ribbon(aes_string(x = x, ymin = "lower", ymax = "upper", fill = "algorithm"), alpha = 0.25, colour = NA)
   p = p + geom_line()
   # p = p + geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.1, colour = NA)
   p = p + theme_bw()

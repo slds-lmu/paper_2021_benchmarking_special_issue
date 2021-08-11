@@ -154,7 +154,7 @@ def main(args):
     fun = w.compute
 
     # Number of function evaluations (need to restart in case budget parameter is not set to a fixed value)
-    total_budget_in_evals =  math.ceil(args.total_budget / args.maxbudget)
+    total_budget_in_evals = math.ceil(args.total_budget / args.maxbudget)
 
     scen = {"run_obj": "quality",  # we optimize quality (alternatively runtime)
                          "runcount-limit": total_budget_in_evals,  
@@ -220,3 +220,18 @@ def main(args):
 if __name__ == "__main__":
     main(sys.argv[1:])
 
+
+# cs = ConfigurationSpace()
+# hyperparameters = [UniformFloatHyperparameter('x%d' % (i + 1), 0, 1) for i in range(21)]
+# cs.add_hyperparameters(hyperparameters)
+
+# sobol_kwargs = dict(
+#     rng=np.random.RandomState(1),
+#     traj_logger=unittest.mock.Mock(),
+#     ta_run_limit=1000,
+#     configs=None,
+#     n_configs_x_params=None,
+#     max_config_fracs=0.25,
+#     init_budget=1,
+# )
+# SobolDesign(cs=cs, **sobol_kwargs).select_configurations()

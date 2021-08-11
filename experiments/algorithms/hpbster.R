@@ -10,7 +10,6 @@
 # n0 = int(np.floor((max_SH_iter)/(s+1)) * self.eta**s) (Configs to start with)
 # ns = [max(int(n0*(self.eta**(-i))), 1) for i in range(s+1)] (Configs for the brackets: ni)
 
-
 # TODO: Check whether bohb/hb maximizes! --> DONE, it minimizes. Always needs to be transformed
 # TODO: Get pandas data.frame does not give me the right thing! --> No, but I managed to do python logging
 # TODO: It seems that only the most exploratory bracket is returned --> Fixed, one has to set the n_iters to at least the number of brackets
@@ -33,7 +32,7 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
 
 	# total budget the run is given
 	# Compute the total budget * 32 (such that we can reconstruct parallelization afterwards)
-	fullbudget = ins$terminator$param_set$values$budget # * PARALLELIZATION
+	fullbudget = ins$terminator$param_set$values$budget * PARALLELIZATION
 
 	start_t = Sys.time()
     out = system2('python3', c("experiments/algorithms/hpbster.py",  "--alg", algorithm_type, 
