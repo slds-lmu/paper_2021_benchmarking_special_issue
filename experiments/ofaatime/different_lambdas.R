@@ -1,6 +1,9 @@
+# FIXME: delete registry_different_lambdas
+
 library(data.table)
 library(paradox)
 library(mlr3misc)
+library(lgr)
 root = here::here()
 workdir = file.path(root, "irace/data/surrogates")
 
@@ -8,6 +11,8 @@ workdir = file.path(root, "irace/data/surrogates")
 source(file.path(root, "irace", "optimization.R"))
 
 eval_ = function(job, data, instance, budget_factor = 30, ...) {
+  logger = lgr::get_logger("bbotk")
+  logger$set_threshold("warn")
   root = here::here()
   workdir = file.path(root, "irace/data/surrogates")
   irace_instance = instance
@@ -55,12 +60,13 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
   res$cfg = instance$cfg
   res$task = instance$level
   res[, eval_nr := seq_len(.N)]
-  res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))]  # FIXME: should introduce max_min multiplicator if we do not minimize
+  res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))] # FIXME: should introduce max_min multiplicator if we do not minimize
 
   list(archive = res, runtime = end_t - start_t)
 }
 
 library(batchtools)
+# FIXME: add date postix to reg
 reg = makeExperimentRegistry(file.dir = "/dss/dssfs02/lwp-dss-0001/pr74ze/pr74ze-dss-0000/ru84tad2/registry_different_lambdas", source = file.path(root, "irace", "optimization.R"))
 #reg = makeExperimentRegistry(file.dir = NA, source = file.path(root, "irace", "optimization.R"))
 saveRegistry(reg)
@@ -89,8 +95,8 @@ names(prob_designs) = nn
 addAlgorithm("eval_", fun = eval_)
 
 irace_result = readRDS(file.path(root, "irace", "data", "data_31_05_single", "irace_instance.rda"))
-irace_result_lcbench = readRDS(file.path(root, "irace", "data", "data_07_07_single_lcbench", "irace_instance.rda"))
-# irace_result_rbv2_super = readRDS(file.path(root, "irace", "data", "data_07_07_single_lcbench", "irace_instance.rda"))
+irace_result_lcbench = readRDS(file.path(root, "irace", "data", "data_12_07_single_lcbench", "irace_instance.rda"))
+irace_result_rbv2_super = readRDS(file.path(root, "irace", "data", "data_13_07_single_rbv2", "irace_instance.rda"))
 
 lambda = irace_result$result_x_domain
 lambda$surrogate_learner = list(list(lambda$surrogate_learner)) # batchtools complains otherwise
@@ -109,8 +115,8 @@ lambda_martin$random_interleave_fraction.end = 0.8
 lambda_lcbench = irace_result_lcbench$result_x_domain
 lambda_lcbench$surrogate_learner = list(list(lambda_lcbench$surrogate_learner)) # batchtools complains otherwise
 
-#lambda_rbv2_super = irace_result_rbv2_super$result_x_domain
-#lambda_rbv2_super$surrogate_learner = list(list(lambda_rbv2_super$surrogate_learner)) # batchtools complains otherwise
+lambda_rbv2_super = irace_result_rbv2_super$result_x_domain
+lambda_rbv2_super$surrogate_learner = list(list(lambda_rbv2_super$surrogate_learner)) # batchtools complains otherwise
 
 ids_lambda = addExperiments(
   prob.designs = prob_designs,
@@ -133,20 +139,20 @@ ids_lambda_lcbench = addExperiments(
 )
 addJobTags(ids_lambda_lcbench, "lambda_lcbench")
 
-#ids_lambda_rbv2_super = addExperiments(
-#  prob.designs = prob_designs,
-#  algo.designs = list(eval_ = as.data.table(lambda_rbv2_super)),
-#  repls = 30L
-#)
-#addJobTags(ids_lambda_rbv2_super, "lambda_rbv2_super")
+ids_lambda_rbv2_super = addExperiments(
+  prob.designs = prob_designs,
+  algo.designs = list(eval_ = as.data.table(lambda_rbv2_super)),
+  repls = 30L
+)
+addJobTags(ids_lambda_rbv2_super, "lambda_rbv2_super")
 
-# Standard resources used to submit jobs to cluster
+# standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 24L * 2L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
+  walltime = 3600L * 24L * 4L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
 )
 
 all_jobs = findJobs()
-all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = ceiling(NROW(all_jobs) / 100L))]
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)]
 submitJobs(all_jobs, resources = resources.serial.default)
 
 ################################################################################# Analysis and Plots ##################################################################################################
@@ -167,21 +173,21 @@ tags = batchtools::getUsedJobTags()
 
 future_lapply(tags, FUN = function(tag) {
   tagged = findTagged(tag)
-  tmp = map_dtr(tagged$job.id, function(id) {
-    job = makeJob(id)
+  tmp = reduceResultsDataTable(fun = function(x, job) {
     budget_param = job$instance$budget_par
-    archive = loadResult(id)$archive
+    archive = x
     archive[, cumbudget := cumsum(exp(get(budget_param)))]
     archive[, lambda := tag]
     archive[, repl := job$repl]
     archive[, id := job$id]
     archive
-  }, .fill = TRUE)
+  }, ids = tagged)
+  tmp = rbindlist(tmp$result, fill = TRUE)
   saveRDS(tmp, paste0("/home/user/ofatime/results_", tag, ".rds"))
 })
 
 tag = tags[1]
-dat = readRDS(paste0("results_", tag, ".rds"))
+dat = readRDS(paste0("/home/user/ofatime/results_", tag, ".rds"))
 setkeyv(dat, c("id", "repl", "cfg", "task"))
 results_min_max = map_dtr(c("lcbench", "rbv2_super", "branin"), function(config) {
   target_variable = if (config == "lcbench") "val_cross_entropy" else if (config == "rbv2_super") "logloss" else "y"
@@ -209,8 +215,8 @@ for (tag in tags[-1]) {
   replace = which(results_min_max$y_max < tmp$y_max)
   results_min_max$y_max[replace] = tmp$y_max[replace]
 }
-results_min_max[cfg == "branin", y_min :=  0.3979]    # analytical solution
-results_min_max[cfg == "branin", y_max :=  485.3732]  # analytical solution
+results_min_max[cfg == "branin", y_min :=  0.3979]   # analytical solution
+results_min_max[cfg == "branin", y_max :=  485.3732] # analytical solution
 results_min_max[, y_diff := y_max - y_min]
 results_min_max[cfg == "branin", task := "1"]
 results_min_max[, id := NULL]
