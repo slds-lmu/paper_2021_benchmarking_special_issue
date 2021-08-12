@@ -1,7 +1,11 @@
+# FIXME: delete registry_ofaatime_new and registry_surrogates
+
 library(data.table)
 library(paradox)
 library(mlr3misc)
+library(mlr3learners)
 library(mlr3extralearners)
+library(lgr)
 root = here::here()
 workdir = file.path(root, "irace/data/surrogates")
 
@@ -9,6 +13,8 @@ workdir = file.path(root, "irace/data/surrogates")
 source(file.path(root, "irace", "optimization.R"))
 
 eval_ = function(job, data, instance, budget_factor = 30, ...) {
+  logger = lgr::get_logger("bbotk")
+  logger$set_threshold("warn")
   root = here::here()
   workdir = file.path(root, "irace/data/surrogates")
   irace_instance = instance
@@ -56,15 +62,14 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
   res$cfg = instance$cfg
   res$task = instance$level
   res[, eval_nr := seq_len(.N)]
-  res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))]  # FIXME: should introduce max_min multiplicator if we do not minimize
+  res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))] # FIXME: should introduce max_min multiplicator if we do not minimize
 
   list(archive = res, runtime = end_t - start_t)
 }
 
 library(batchtools)
-# FIXME: delete old registry
-ngrid = 5L # How many points on a grid for real values?
-reg = makeExperimentRegistry(file.dir = "/dss/dssfs02/lwp-dss-0001/pr74ze/pr74ze-dss-0000/ru84tad2/registry_ofaatime", source = file.path(root, "irace", "optimization.R"))
+ngrid = 5L # how many points on a grid for real values?
+reg = makeExperimentRegistry(file.dir = "/dss/dssfs02/lwp-dss-0001/pr74ze/pr74ze-dss-0000/ru84tad2/registry_ofaatime_02_08", source = file.path(root, "irace", "optimization.R"))
 #reg = makeExperimentRegistry(file.dir = NA, source = file.path(root, "irace", "optimization.R"))
 saveRegistry(reg)
 
@@ -91,16 +96,22 @@ names(prob_designs) = nn
 # add eval_ algorithm (never use `eval` as a function name or have a function named `eval` in .GlobalEnv)
 addAlgorithm("eval_", fun = eval_)
 
-# FIXME: use separate results once available
-irace_result_lcbench = readRDS(file.path(root, "irace", "data", "data_07_07_single_lcbench", "irace_instance.rda"))
+irace_result_lcbench = readRDS(file.path(root, "irace", "data", "data_12_07_single_lcbench", "irace_instance.rda"))
 searchspace = irace_result_lcbench$search_space
 on_log_scale = c("budget_log_step", "mu", "filter_factor_first", "filter_factor_last", "filter_select_per_tournament",
-  "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end")  # FIXME: any way to get this automatic?
+  "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end") # FIXME: any way to get this automatic?
 lambda_lcbench = irace_result_lcbench$result_x_domain
 lambda_lcbench$surrogate_learner = list(list(lambda_lcbench$surrogate_learner)) # batchtools complains otherwise
 
+irace_result_rbv2_super = readRDS(file.path(root, "irace", "data", "data_13_07_single_rbv2", "irace_instance.rda"))
+#searchspace = irace_result_rbv2_super$search_space
+#on_log_scale = c("budget_log_step", "mu", "filter_factor_first", "filter_factor_last", "filter_select_per_tournament",
+#  "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end")# FIXME: any way to get this automatic?
+lambda_rbv2_super = irace_result_rbv2_super$result_x_domain
+lambda_rbv2_super$surrogate_learner = list(list(lambda_rbv2_super$surrogate_learner)) # batchtools complains otherwise
+
 imputepl = po("imputeoor", offset = 1, multiplier = 10) %>>% po("fixfactors") %>>% po("imputesample")
-imputepl_cubist =  po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% imputepl
+imputepl_cubist = po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% imputepl
 imputepl_mars = po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% po("encode") %>>% imputepl
 kknn = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
 kknn$id = paste0(kknn$id, ".7")
@@ -136,7 +147,6 @@ for (cfg in c("lcbench", "rbv2_super")) {
     id = names(lambda)[i]
   
     if (id == "surrogate_learner") {
-      learners_ = if (cfg == "lcbench") learners else learners[-5L]  # drop gp for rbv2_super
       lambdas = lapply(learners_, function(learner) {
         lambda$surrogate_learner = list(list(learner))
         lambda
@@ -182,7 +192,7 @@ for (cfg in c("lcbench", "rbv2_super")) {
         lambdas[, (id) := exp(get(id))]
       }
   
-      if (id %in% c("mu", "filter_select_per_tournament", "filter_select_per_tournament.end")) {  # FIXME: these are double on log and integer after retrafo?
+      if (id %in% c("mu", "filter_select_per_tournament", "filter_select_per_tournament.end")) { # FIXME: these are double on log and integer after retrafo?
         lambdas[, (id) := as.integer(round(get(id)))]
       }
   
@@ -211,15 +221,222 @@ for (cfg in c("lcbench", "rbv2_super")) {
   addJobTags(ids, c(cfg, "surrogate_turned_off"))
 }
 
-# Standard resources used to submit jobs to cluster
+# standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 24L * 1L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
+  walltime = 3600L * 24L * 4L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
 )
 
 all_jobs = findJobs()
-all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = ceiling(NROW(all_jobs) / 100L))]
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)] # ceiling(NROW(all_jobs) / 100L)
 submitJobs(all_jobs, resources = resources.serial.default)
 
 ################################################################################# Analysis and Plots ##################################################################################################
 
-# FIXME: see different_lambdas.R
+library(data.table)
+library(future)
+library(future.apply)
+library(ggpubr)
+library(batchtools)
+library(mlr3misc)
+library(ggplot2)
+library(ggpubr)
+
+plan(multicore, workers = 8)
+
+reg = loadRegistry(file.dir = "registry_ofaatime_02_08")
+tags = batchtools::getUsedJobTags()
+tab = getJobTable()
+
+# config is lambda of smashy
+# benchmark is grouped for instances
+# baseline
+for (config in c("lcbench", "rbv2_super")) {
+  for (benchmark in c("lcbench", "rbv2_super", "branin")) {
+    jobs = data.table(job.id = intersect(tab[grepl(benchmark, problem)][["job.id"]], intersect(reg$tags[tag %in% "baseline"]$job.id, reg$tags[tag %in% config]$job.id)))
+    results_baseline = reduceResultsDataTable(fun = function(x, job) {
+      budget_param = job$instance$budget_par
+      archive = x$archive
+      archive[, cumbudget := cumsum(exp(get(budget_param)))]
+      archive[, repl := job$repl]
+      archive[, id := job$id]
+      archive
+    }, ids = jobs)
+    results_baseline = rbindlist(results_baseline$result)
+    saveRDS(results_baseline, paste0("/home/user/ofatime/results/results_baseline_", config, "_config_", benchmark, ".rds"))
+  }
+}
+
+ofaatime_tags = tags[- which(tags %in% c("lcbench", "baseline", "rbv2_super"))]
+surrogate_learner_errors = findErrors()
+
+# ofaatime
+for (ofaatime_tag in ofaatime_tags) {
+  for (config in c("lcbench", "rbv2_super")) {
+    for (benchmark in c("lcbench", "rbv2_super", "branin")) {
+      jobs = data.table(job.id = intersect(tab[grepl(benchmark, problem)][["job.id"]], intersect(reg$tags[tag %in% ofaatime_tag]$job.id, reg$tags[tag %in% config]$job.id)))
+      if (ofaatime_tag == "surrogate_learner") {
+        jobs = data.table(job.id = setdiff(jobs$job.id, surrogate_learner_errors$job.id))
+      }
+      results = reduceResultsDataTable(fun = function(x, job) {
+        ot = if (ofaatime_tag == "surrogate_learner") {
+          job$algo.pars[[ofaatime_tag]][[1L]]$id
+        } else if (ofaatime_tag == "surrogate_turned_off") {
+          "surrogate_turned_off"
+        } else {
+          job$algo.pars[[ofaatime_tag]]
+        }
+        budget_param = job$instance$budget_par
+        archive = x$archive
+        archive[, cumbudget := cumsum(exp(get(budget_param)))]
+        archive[, repl := job$repl]
+        archive[, id := job$id]
+        archive[, (ofaatime_tag) := ot]
+        archive
+      }, ids = jobs)
+      results = rbindlist(results$result)
+      saveRDS(results, paste0("/home/user/ofatime/results/results_", ofaatime_tag, "_", config, "_config_", benchmark, ".rds"))
+    }
+  }
+}
+
+ofaatime_tags = c("budget_log_step", "mu", "survival_fraction", "filter_algorithm", "surrogate_learner", "filter_with_max_budget", "filter_factor_first", "filter_factor_last",
+  "filter_select_per_tournament", "random_interleave_fraction", "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end",
+  "random_interleave_fraction.end", "random_interleave_random", "surrogate_turned_off")
+
+for (config in c("lcbench", "rbv2_super")) {
+  for (benchmark in c("lcbench", "rbv2_super", "branin")) {
+    files = dir("results")[grepl(paste0(config, "_config"), dir("results")) & grepl(paste0(benchmark, ".rds"), dir("results"))]
+    
+    data = map(files, function(file) {
+      tmp = readRDS(paste0("results/", file))
+      tmp[repl %in% 1:10]  # Note: ofaatime only uses 10 repl
+    })
+    tmp = rbindlist(data, fill = TRUE)
+    refs = setNames(tmp[, min(best), by = .(task, repl)], c("task", "repl", "min"))
+    refs$range = tmp[, diff(range(best)), by = .(task, repl)]$V1
+    
+    data = map(data, function(x) {
+      ot = colnames(x)[which(colnames(x) %in% ofaatime_tags)]
+      by_vals =  c("eval_nr", "cumbudget")
+      if (length(ot)) by_vals = c(by_vals, ot)
+      tmp = x[refs, on = c("task", "repl")]
+      tmp[, normalized_regret := (best - min) / range]
+      agg = setNames(tmp[, mean(normalized_regret), by = by_vals], c(by_vals, "mean_normalized_regret"))
+      agg$sd_normalized_regret = tmp[, sd(normalized_regret), by = by_vals]$V1
+      agg$n = tmp[, length(normalized_regret), by = by_vals]$V1
+      agg$se_normalized_regret = agg$sd_normalized_regret / sqrt(agg$n)
+      agg
+    })
+    names(data) = gsub("results_|_lcbench|_rbv2_super|_config|_branin|.rds", "", files)
+    saveRDS(data, paste0("/home/user/ofatime/results_agg/results_agg_", config, "_config_", benchmark, ".rds"))
+  }
+}
+
+
+
+library(shiny)
+
+results_lcbench_config_lcbench = readRDS("results_agg/results_agg_lcbench_config_lcbench.rds")
+results_lcbench_config_rbv2_super = readRDS("results_agg/results_agg_lcbench_config_rbv2_super.rds")
+results_lcbench_config_branin = readRDS("results_agg/results_agg_lcbench_config_branin.rds")
+
+results_rbv2_super_config_lcbench = readRDS("results_agg/results_agg_rbv2_super_config_lcbench.rds")
+results_rbv2_super_config_rbv2_super = readRDS("results_agg/results_agg_rbv2_super_config_rbv2_super.rds")
+results_rbv2_super_config_branin = readRDS("results_agg/results_agg_rbv2_super_config_branin.rds")
+
+lambda_lcbench = readRDS("irace_instance_lcbench.rds")$result_x_domain
+lambda_lcbench$surrogate_learner = lambda_lcbench$surrogate_learner$id
+lambda_rbv2_super = readRDS("irace_instance_rbv2.rds")$result_x_domain
+lambda_rbv2_super$surrogate_learner = lambda_rbv2_super$surrogate_learner$id
+
+# Define UI for dataset viewer app ----
+ui = fluidPage(
+
+  # App title ----
+  titlePanel("Smashy Ofaatime"),
+
+  # Sidebar layout with input and output definitions ----
+  sidebarLayout(
+
+    # Sidebar panel for inputs ----
+    sidebarPanel(
+
+      # Input: Select a benchmark ----
+      selectInput("benchmark", "Choose a benchmark:",
+                  choices = c("lcbench", "rbv2_super", "branin")),
+
+      # Input: Select a config ----
+      selectInput("config", "Choose a SMASHY config (irace run on):",
+                  choices = c("lcbench", "rbv2_super")),
+
+      # Input: Select a factor ----
+      selectInput("factor", "Choose a factor:",
+                  choices = c("budget_log_step", "mu", "survival_fraction", "filter_algorithm", "surrogate_learner", "filter_with_max_budget", "filter_factor_first", "filter_factor_last",
+                              "filter_select_per_tournament", "random_interleave_fraction", "filter_factor_first.end", "filter_factor_last.end", "filter_select_per_tournament.end",
+                              "random_interleave_fraction.end", "random_interleave_random", "surrogate_turned_off")),
+
+      # Input: actionButton() to defer the rendering of output ----
+      actionButton("update", "Update Plot"),
+
+      width = 2
+
+    ),
+
+    # Main panel for displaying outputs ----
+    mainPanel(
+
+      # Output: Plot
+      plotOutput("view", width = "100%"),
+
+    )
+
+  )
+)
+
+# Define server logic to summarize and view selected dataset ----
+server = function(input, output) {
+
+  # requested dataset ----
+  datasetInput = eventReactive(input$update, {
+    if (input$benchmark == "lcbench") {
+      switch(input$config, lcbench = results_lcbench_config_lcbench, rbv2_super = results_rbv2_super_config_lcbench)
+    } else if (input$benchmark == "rbv2_super") {
+      switch(input$config, lcbench = results_lcbench_config_rbv2_super, rbv2_super = results_rbv2_super_config_rbv2_super)
+    } else if (input$benchmark == "branin") {
+      switch(input$config, lcbench = results_lcbench_config_branin, rbv2_super = results_rbv2_super_config_branin)
+    }
+  })
+
+  factorInput = eventReactive(input$update, input$factor)
+
+  lambdaInput = eventReactive(input$update, switch(input$config, lcbench = lambda_lcbench, rbv2_super = lambda_rbv2_super))
+
+  #  ---- create plot
+  output$view = renderPlot({
+    data = datasetInput()
+    baseline = data[["baseline"]]
+    factor = factorInput()
+    lambda = lambdaInput()
+    baseline_val = if (factor == "surrogate_turned_off") {
+      "surrogate_turned_on"
+    } else {
+      lambda[[factor]]
+    }
+    baseline[, (factor) := baseline_val]
+    data_factor = data[[factor]]
+    data_factor = rbind(data_factor, baseline)
+    data_factor[[factor]] = as.factor(data_factor[[factor]])
+    g = ggplot(aes_string(x = "cumbudget", y = "mean_normalized_regret", colour = factor, fill = factor), data = data_factor) +
+      geom_line() +
+      geom_ribbon(aes(ymin = mean_normalized_regret - se_normalized_regret, ymax = mean_normalized_regret + se_normalized_regret), colour = NA, alpha = 0.2) +
+      scale_y_continuous(trans = "log10") +
+      xlab("Cumulative Budget") +
+      ylab("log10 Mean Normalized Regret (Ribbons SE)") +
+      labs(title = paste0("Config: ", input$config, "; Benchmark: ", input$benchmark, "; Default: ", baseline_val))
+    g
+  })
+}
+
+# Create Shiny app ----
+shinyApp(ui, server)
+

@@ -1,3 +1,5 @@
+# FIXME: obsolete, now partially included in ofaatime.R
+
 library(data.table)
 library(paradox)
 library(mlr3misc)
@@ -56,7 +58,7 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
   res$cfg = instance$cfg
   res$task = instance$level
   res[, eval_nr := seq_len(.N)]
-  res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))]  # FIXME: should introduce max_min multiplicator if we do not minimize
+  res[, best := map_dbl(seq_len(NROW(res)), function(i) min(res[[instance$targets]][1:i]))] # FIXME: should introduce max_min multiplicator if we do not minimize
 
   list(archive = res, runtime = end_t - start_t)
 }
@@ -94,7 +96,7 @@ irace_result = readRDS(file.path(root, "irace", "data", "data_31_05_single", "ir
 lambda = irace_result$result_x_domain
 
 imputepl = po("imputeoor", offset = 1, multiplier = 10) %>>% po("fixfactors") %>>% po("imputesample")
-imputepl_cubist =  po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% imputepl
+imputepl_cubist = po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% imputepl
 imputepl_mars = po("colapply", applicator = as.integer, affect_columns = selector_type("logical")) %>>% po("encode") %>>% imputepl
 kknn = GraphLearner$new(imputepl %>>% mlr3::lrn("regr.kknn", fallback = mlr3::lrn("regr.featureless"), encapsulate = c(train = "evaluate", predict = "evaluate")))
 kknn$id = paste0(kknn$id, ".7")
@@ -119,7 +121,7 @@ lambda$random_interleave_fraction.end = 0.8 # 80% surrogate usage
 
 id = "surrogate_learner"
 
-lambdas = lapply(learners, function(learner)  {
+lambdas = lapply(learners, function(learner) {
   tmp = lambda
   tmp$surrogate_learner[[1L]] = list(learner)
   tmp
