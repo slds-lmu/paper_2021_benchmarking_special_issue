@@ -24,7 +24,7 @@ smac = function(data, job, instance, full_budget, log_scale = TRUE, multi.point 
 	total_budget = total_budget * multi.point
 
 	start_t = Sys.time()
-    out = system2('python', c("experiments/algorithms/smac_.py", 
+    out = system2('python3', c("experiments/algorithms/smac_.py", 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 
     	" --task ", instance$task, " --budget_param ",  bid, 
     	" --minbudget ", budget_lower, " --maxbudget ", budget_upper, 

@@ -60,13 +60,13 @@ assert_true(sum(out$archive$budget) >= MAX_BUDGETS[[prob]])
 
 
 ## hpbster_hb / bohb
-jid = tab[algorithm == "hpbster_hb" & problem == prob, ][1, ]$job.id
+jid = tab[algorithm == "hpbster_bohb" & problem == prob, ][1, ]$job.id
 out = testJob(jid) 
 # Read the outcome
 library(reticulate)
 pd = import("pandas")
 path = file.path(reg$file.dir, "external", jid, "results.json")
-df = pd$read_pickle(path)$get_pandas_dataframe()
+df = pd$read_pickle(path)
 df = as.data.table(df)
 names(df)[which(names(df) == "loss")] = "performance"
 sum(df$budget)
@@ -74,6 +74,33 @@ MAX_BUDGETS[[prob]] * PARALLELIZATION
 
 assert_true(all(out$achive$budget == BUDGET_UPPER[[prob]]))
 assert_true(sum(out$archive$budget) >= MAX_BUDGETS[[prob]])
+
+# Compute the schedule for LCBench 
+
+library(jsonlite)
+library(dplyr)	
+
+path = file.path(reg$file.dir, "external", jid)
+
+df = readLines(file.path(path, "results.json")) %>% lapply(fromJSON)
+df = lapply(df, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], budget = x[[2]], loss = x[[4]]$loss, as.data.frame(t(unlist(x[[3]])))))
+configs = readLines(file.path(path, "configs.json")) %>% lapply(fromJSON)
+configs = lapply(configs, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], as.data.frame(t(unlist(x[[2]])))))
+df = do.call(rbind, df)
+configs = do.call(rbind, configs)
+df = merge(df, configs, all.x = TRUE, by = c("cid1", "cid2", "cid3"))
+df = df[order(df$submitted, df$cid1, df$cid3), ]
+names(df)[which(names(df) == "loss")] = "performance"
+df$budget = round(df$budget) # Correction to match the actual budget 
+
+schedule = setDT(df)[, .N, by = c("cid1", "budget")]
+saveRDS(schedule, "experiments/problems/lcbench/schedule_hpbster.rds")
+schedule$cores_used = 32
+schedule$budget_on_cores = schedule$budget * schedule$cores_used
+schedule$filled_capacity = schedule$N / schedule$cores_used
+sum(schedule$budget_on_cores)
+
+
 
 
 

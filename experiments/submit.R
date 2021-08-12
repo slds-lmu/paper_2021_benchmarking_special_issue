@@ -34,9 +34,9 @@ submitJobs(tosubmit_mbo, resources = resources.serial.default)
 
 # 3. BOHB
 (tosubmit_hpbster = tosubmit[algorithm == "hpbster_bohb", ])
-tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 200)
+tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 100)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
-submitJobs(tosubmit_hpbster[1, ], resources = resources.serial.default)
+submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
 # 4. HB

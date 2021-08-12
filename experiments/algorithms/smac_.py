@@ -29,11 +29,9 @@ import os
 import pickle
 import sys
 
-import dask
-from distributed import Client
-
 class worker():
     def __init__(self, problem, task, budget_param, objective, objective_multiplier, minbudget, maxbudget, full_budget, budget_on_log, total_budget):
+        print(smac.__version__)
         base = importr("base")
         self.problem = problem 
         self.task = task
@@ -221,17 +219,17 @@ if __name__ == "__main__":
     main(sys.argv[1:])
 
 
-# cs = ConfigurationSpace()
-# hyperparameters = [UniformFloatHyperparameter('x%d' % (i + 1), 0, 1) for i in range(21)]
-# cs.add_hyperparameters(hyperparameters)
+cs = ConfigurationSpace()
+hyperparameters = [UniformFloatHyperparameter('x%d' % (i + 1), 0, 1) for i in range(21)]
+cs.add_hyperparameters(hyperparameters)
 
-# sobol_kwargs = dict(
-#     rng=np.random.RandomState(1),
-#     traj_logger=unittest.mock.Mock(),
-#     ta_run_limit=1000,
-#     configs=None,
-#     n_configs_x_params=None,
-#     max_config_fracs=0.25,
-#     init_budget=1,
-# )
-# SobolDesign(cs=cs, **sobol_kwargs).select_configurations()
+sobol_kwargs = dict(
+    rng=np.random.RandomState(1),
+    traj_logger=unittest.mock.Mock(),
+    ta_run_limit=1000,
+    configs=None,
+    n_configs_x_params=None,
+    max_config_fracs=0.25,
+    init_budget=1,
+)
+SobolDesign(cs=cs, **sobol_kwargs).select_configurations()

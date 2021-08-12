@@ -15,7 +15,7 @@ source("experiments/algorithms/smac_.R")
 source("experiments/algorithms/smac_hyperband.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
