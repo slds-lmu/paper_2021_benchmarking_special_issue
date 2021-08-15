@@ -15,7 +15,7 @@ source("experiments/algorithms/smac_.R")
 source("experiments/algorithms/smac_hyperband.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "TEST"
+SETUP = "REAL"
 
 switch(SETUP, 
 	"TEST" = {
@@ -36,7 +36,7 @@ switch(SETUP,
 		# termination criterion for each run
 		registry_name = "reg_sequential"
 		# replications
-		REPLS = 30L 
+		REPLS = 30L * 32L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
 		B_MULTIPLIER = 30
 		# PARALELLIZATION FACTOR
