@@ -21,8 +21,6 @@ safeSetupRegistry = function(registry_name, overwrite, packages, def) {
 
 readProblem = function(data, job, task, objectives, ...) {
 
-  reticulate::use_condaenv("r-reticulate-3.9")
-
   nobjectives = length(objectives)
 
   dom = data$param_set
