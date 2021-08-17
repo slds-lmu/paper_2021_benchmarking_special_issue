@@ -251,7 +251,8 @@ def main(args):
     #     iterations_needed = math.ceil(fullbudget / total_budget_hb_sequential) * (max_SH_iter + 1)
     # if alg == "bohb": # We only fill each bracket as far as we can 
     # Do the maximum iterations: (1) A sequential run with fullbudget / 32 (2) Parallel run with not completely filled nodes on fullbudget
-    iterations_needed = max(math.ceil(fullbudget / 32 / total_budget_hb_sequential) * (max_SH_iter + 1), math.ceil(fullbudget / total_budget_hb_parallel) * (max_SH_iter + 1))
+    iterations_needed = max(math.ceil(args.fullbudget / 32 / total_budget_hb_sequential) * (max_SH_iter + 1), math.ceil(args.fullbudget / total_budget_hb_parallel) * (max_SH_iter + 1))
+    print('Iterations needed: ' + str(iterations_needed))
 
     # LCBENCH: 
     # * total_budget_hb_parallel:            8751
@@ -264,8 +265,6 @@ def main(args):
     # * iterations if all 32 nodes are used: 11200 (2240 full runs)
     # * iterations if 32 nodes are not fully used: 1000 (200 full runs)
     # --> We only run the version that is not computed on the full budget, as we still have mlr3hyperband (which is comparable and computed on the full budget!)
-
-    print(iterations_needed)
 
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=randport, working_directory=args.tempdir)
     NS.start()
