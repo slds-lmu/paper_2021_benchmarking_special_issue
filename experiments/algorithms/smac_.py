@@ -154,13 +154,13 @@ def main(args):
     # Number of function evaluations (need to restart in case budget parameter is not set to a fixed value)
     total_budget_in_evals = math.ceil(args.total_budget / args.maxbudget)
 
-    print(total_budget)
+    print(args.total_budget)
     print(total_budget_in_evals)
 
     scen = {"run_obj": "quality",  # we optimize quality (alternatively runtime)
                          "runcount-limit": total_budget_in_evals,  
                          "cs": cs,  # configuration space
-                         "deterministic": "false", 
+                         "deterministic": "true", 
                          "memory_limit": 2048, 
                          "wallclock-limit": 2600 * 48,
                          "output_dir": args.tempdir

@@ -116,7 +116,7 @@ sum(df$budget)
 MAX_BUDGETS[[prob]]
 
 ## SMAC (full budget)
-jid = tab[algorithm == "smac_full_budget" & problem == prob, ][1, ]$job.id
+jid = tab[algorithm == "smac_full_budget" & problem == prob, ][2, ]$job.id
 out = testJob(jid) 
 library(reticulate)
 pd = import("pandas")

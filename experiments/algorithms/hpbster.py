@@ -112,7 +112,7 @@ class lcbench(Worker):
                 })
     @staticmethod
     def get_configspace():
-        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_lcbench_drop_OpenML_task_id_epoch.json'            , 'r') as f:
+        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_lcbench_drop_OpenML_task_id_epoch.json', 'r') as f:
             json_string = f.read()
             cs = json.read(json_string)
         return(cs)
@@ -161,7 +161,7 @@ class rbv2_super(Worker):
                 })
     @staticmethod
     def get_configspace():
-        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_rbv2_super_drop_trainsize_repl_task_id.json'            , 'r') as f:
+        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_rbv2_super_drop_trainsize_repl_task_id.json', 'r') as f:
             json_string = f.read()
             cs = json.read(json_string)
         return(cs)
@@ -194,7 +194,7 @@ class branin(Worker):
                 })
     @staticmethod
     def get_configspace():
-        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_branin_drop_fidelity.json'            , 'r') as f:
+        with open('../paper_2021_multi_fidelity_surrogates/src/configspaces/configspace_branin_drop_fidelity.json', 'r') as f:
             json_string = f.read()
             cs = json.read(json_string)
         return(cs)
@@ -269,10 +269,6 @@ def main(args):
     alg.shutdown(shutdown_workers = False)
 
     NS.shutdown()    
-
-    # Something super weird happens with the results / time stamps are mixed up, results are simply wrong! 
-    # with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
-    #     pickle.dump(res, fh)  
 
 if __name__ == "__main__":
     main(sys.argv[1:])
