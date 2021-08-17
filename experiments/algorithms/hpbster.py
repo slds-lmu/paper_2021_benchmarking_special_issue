@@ -224,27 +224,47 @@ def main(args):
 
     print(args.fullbudget)
 
-    total_budget_spent = 0
     res = None
     # Bei ports randomisieren 
     randport = random.randrange(49152, 65535 + 1)
 
-    total_configs_evaluated = 0
-    total_budget_hb = 0
+    total_configs_evaluated_parallel = 0
+    total_configs_evaluated_sequential = 0
+    total_budget_hb_parallel = 0
+    total_budget_hb_sequential = 0
     budgets = args.maxbudget * np.power(args.eta, -np.linspace(max_SH_iter-1, 0, max_SH_iter))
     # compute the total number of evaluations
     for s in range(max_SH_iter):
         n0 = int(np.floor((max_SH_iter)/(s+1)) * args.eta**s)
-        if args.alg == "bohb":
-            ns = [32 for i in range(s+1)]
-        else:
-            ns = [max(int(n0*(args.eta**(-i))), 1) for i in range(s+1)]        
-        total_configs_evaluated = total_configs_evaluated + sum(ns)
-        total_budget_per_iteration = [ns * budgets[(-s-1):]] 
-        total_budget_hb = total_budget_hb + np.sum(total_budget_per_iteration)
+        ns_parallel_execution = [32 for i in range(s+1)]
+        ns_sequential_execution = [max(int(n0*(args.eta**(-i))), 1) for i in range(s+1)]
+        total_configs_evaluated_parallel = total_configs_evaluated_parallel + sum(ns_parallel_execution)
+        total_configs_evaluated_sequential = total_configs_evaluated_sequential + sum(ns_sequential_execution)
+        total_budget_per_iteration_parallel = [ns_parallel_execution * budgets[(-s-1):]] 
+        total_budget_per_iteration_sequential = [ns_sequential_execution * budgets[(-s-1):]] 
+        total_budget_hb_parallel = total_budget_hb_parallel + np.sum(total_budget_per_iteration_parallel)
+        total_budget_hb_sequential = total_budget_hb_sequential + np.sum(total_budget_per_iteration_sequential)
 
-    print(total_budget_hb)
-    iterations_needed = math.ceil(args.fullbudget / total_budget_hb) * max_SH_iter
+    # Parallel: Buckets are not completely filled, number of configurations is uprounded to 32
+    # if alg == "hb": # We execute the hb runs in parallel with 32x the budget
+    #     # Spanning up 32 independent HB runs (overoptimistc budget estimation)
+    #     iterations_needed = math.ceil(fullbudget / total_budget_hb_sequential) * (max_SH_iter + 1)
+    # if alg == "bohb": # We only fill each bracket as far as we can 
+    # Do the maximum iterations: (1) A sequential run with fullbudget / 32 (2) Parallel run with not completely filled nodes on fullbudget
+    iterations_needed = max(math.ceil(fullbudget / 32 / total_budget_hb_sequential) * (max_SH_iter + 1), math.ceil(fullbudget / total_budget_hb_parallel) * (max_SH_iter + 1))
+
+    # LCBENCH: 
+    # * total_budget_hb_parallel:            8751
+    # * total_budget_hb_sequential:          780
+    # * iterations if all 32 nodes are used: 2304 (576 full runs)
+    # * iterations if 32 nodes are not fully used: 260 (52 full runs)
+    # RBV2_SUPER: 
+    # * total_budget_hb_parallel:            168
+    # * total_budget_hb_sequential:          15
+    # * iterations if all 32 nodes are used: 11200 (2240 full runs)
+    # * iterations if 32 nodes are not fully used: 1000 (200 full runs)
+    # --> We only run the version that is not computed on the full budget, as we still have mlr3hyperband (which is comparable and computed on the full budget!)
+
     print(iterations_needed)
 
     NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=randport, working_directory=args.tempdir)
