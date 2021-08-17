@@ -88,7 +88,6 @@ tosubmit = ijoin(tosubmit, findNotDone())
 ###   - focussearch 
 
 
-
 ## 1: Randomsearch (with budget factor 32 to allow for parallel execution)
 (tosubmit_rs = tosubmit[algorithm == "randomsearch_full_budget", ])
 tosubmit_rs = tosubmit_rs[, .SD[1:30], by = c("task")]
@@ -107,9 +106,9 @@ submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 # 3: HB
 (tosubmit_hpbster = tosubmit[algorithm == "hpbster_hb", ])
 tosubmit_hpbster = tosubmit_hpbster[, .SD[1:30], by = c("task")]
-tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 350)
+tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 100)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
-submitJobs(tosubmit_hpbster[1, ], resources = resources.serial.default)
+submitJobs(tosubmit_hpbster, resources = resources.serial.default)
 
 
 # 4: mlr3hyperband (Budget factor 32)
@@ -118,6 +117,7 @@ tosubmit_hb = tosubmit_hb[, .SD[1:30], by = c("task")]
 tosubmit_hb$chunk = chunk(tosubmit_hb$job.id, chunk.size = 10)
 tosubmit_hb = tosubmit_hb[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_hb, resources = resources.serial.default)
+
 
 # 5: smac (as we have 32 replications to ensure the parallel setup, we have to submit much more experiments)
 (tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ]) 
