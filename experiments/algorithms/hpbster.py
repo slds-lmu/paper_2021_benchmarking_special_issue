@@ -294,29 +294,29 @@ if __name__ == "__main__":
 
 
 
-eta = 3
-minbudget = 3**(-3)
-maxbudget = 1
+# eta = 3
+# minbudget = 3**(-3)
+# maxbudget = 1
 
-max_SH_iter = -int(np.log(minbudget/maxbudget)/np.log(eta)) + 1
+# max_SH_iter = -int(np.log(minbudget/maxbudget)/np.log(eta)) + 1
 
-total_configs_evaluated_parallel = 0
-total_configs_evaluated_sequential = 0
-total_budget_hb_parallel = 0
-total_budget_hb_sequential = 0
-budgets = maxbudget * np.power(eta, -np.linspace(max_SH_iter-1, 0, max_SH_iter))
-# compute the total number of evaluations
-for s in range(max_SH_iter):
-    n0 = int(np.floor((max_SH_iter)/(s+1)) * eta**s)
-    ns_parallel_execution = [32 for i in range(s+1)] # In parallel execution, we always spend all 32 resources
-    print(ns_parallel_execution)
-    ns_sequential_execution = [max(int(n0*(eta**(-i))), 1) for i in range(s+1)] # in sequential, we only waste what we actually need
-    print(ns_sequential_execution)
-    total_configs_evaluated_parallel = total_configs_evaluated_parallel + sum(ns_parallel_execution)
-    total_configs_evaluated_sequential = total_configs_evaluated_sequential + sum(ns_sequential_execution)
-    total_budget_per_iteration_parallel = [ns_parallel_execution * budgets[(-s-1):]] 
-    print(total_budget_per_iteration_parallel)
-    total_budget_per_iteration_sequential = [ns_sequential_execution * budgets[(-s-1):]] 
-    total_budget_hb_parallel = total_budget_hb_parallel + np.sum(total_budget_per_iteration_parallel)
-    total_budget_hb_sequential = total_budget_hb_sequential + np.sum(total_budget_per_iteration_sequential)
+# total_configs_evaluated_parallel = 0
+# total_configs_evaluated_sequential = 0
+# total_budget_hb_parallel = 0
+# total_budget_hb_sequential = 0
+# budgets = maxbudget * np.power(eta, -np.linspace(max_SH_iter-1, 0, max_SH_iter))
+# # compute the total number of evaluations
+# for s in range(max_SH_iter):
+#     n0 = int(np.floor((max_SH_iter)/(s+1)) * eta**s)
+#     ns_parallel_execution = [32 for i in range(s+1)] # In parallel execution, we always spend all 32 resources
+#     print(ns_parallel_execution)
+#     ns_sequential_execution = [max(int(n0*(eta**(-i))), 1) for i in range(s+1)] # in sequential, we only waste what we actually need
+#     print(ns_sequential_execution)
+#     total_configs_evaluated_parallel = total_configs_evaluated_parallel + sum(ns_parallel_execution)
+#     total_configs_evaluated_sequential = total_configs_evaluated_sequential + sum(ns_sequential_execution)
+#     total_budget_per_iteration_parallel = [ns_parallel_execution * budgets[(-s-1):]] 
+#     print(total_budget_per_iteration_parallel)
+#     total_budget_per_iteration_sequential = [ns_sequential_execution * budgets[(-s-1):]] 
+#     total_budget_hb_parallel = total_budget_hb_parallel + np.sum(total_budget_per_iteration_parallel)
+#     total_budget_hb_sequential = total_budget_hb_sequential + np.sum(total_budget_per_iteration_sequential)
 
