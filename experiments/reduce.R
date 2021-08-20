@@ -3,7 +3,7 @@ source("experiments/config.R")
 # Load real registry
 reg = loadRegistry("reg_sequential", writeable = TRUE)
 
-tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget"))
+tab = summarizeExperiments(by = c("job.id", "problem", "task", "objectives", "algorithm", "eta", "full_budget"))
 
 done = ijoin(tab, findDone())
 done = done[, .SD[which.min(job.id)], by = c("algorithm", "problem")]
@@ -27,7 +27,7 @@ ijoin(res, done)
 path = "experiments/results_sequential/prepared_files"
 
 prob = "lcbench"
-algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_hb", "hpbster_bohb", "smac_full_budget")#, "smac_hb", "smac_bohb")
+algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_bohb", "smac_full_budget")#, "smac_hb", "smac_bohb")
 
 # Check if all the runs are complete
 sub_tab = tab[problem %in% prob & algorithm %in% algos, ]
@@ -65,16 +65,29 @@ for (algo in algos) {
 					library(dplyr)	
 					
 					if (file.exists(file.path(path, "results.json"))) {
+						start = Sys.time()
+
 						df = readLines(file.path(path, "results.json")) %>% lapply(fromJSON)
-						df = lapply(df, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], budget = x[[2]], loss = x[[4]]$loss, as.data.frame(t(unlist(x[[3]])))))
-						configs = readLines(file.path(path, "configs.json")) %>% lapply(fromJSON)
-						configs = lapply(configs, function(x) cbind(cid1 = x[[1]][1], cid2 = x[[1]][2], cid3 = x[[1]][3], as.data.frame(t(unlist(x[[2]])))))
-						df = do.call(rbind, df)
-						configs = do.call(rbind, configs)
-						df = merge(df, configs, all.x = TRUE, by = c("cid1", "cid2", "cid3"))
+						df = lapply(df, function(x) {
+							cbind(t(as.data.table(x[[1]])), x[[2]], x[[4]]$loss, x[[3]]$submitted)
+						})
+						df = as.data.table(do.call(rbind, df))
+						colnames(df) = c("cid1", "cid2", "cid3", "budget", "performance", "submitted")
+						rownames(df) = NULL
+
+						# configs = readLines(file.path(path, "configs.json")) %>% lapply(fromJSON)
+						# configs = lapply(configs, function(x) {
+						# 	cbind(t(as.data.table(x[[1]])), do.call(cbind, x[[2]]))
+						# })
+						# configs = as.data.table(do.call(rbind, configs))
+						# colnames(configs)[1:3] = c("cid1", "cid2", "cid3")
+						# df = merge(df, configs, all.x = TRUE, by = c("cid1", "cid2", "cid3"))
+
 						df = df[order(df$submitted, df$cid1, df$cid3), ]
-						names(df)[which(names(df) == "loss")] = "performance"
 						df$budget = round(df$budget) # Correction to match the actual budget 
+						end = Sys.time()
+						
+						print(end - start)
 					} else {
 						warning(paste0("Results file does not exist for ", jid))
 					}

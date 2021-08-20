@@ -3,17 +3,17 @@ source("experiments/config.R")
 ### CLUSTER CONFIGURATION ### 
 
 resources.serial.default = list(
-  walltime = 3600L * 24L * 4L, memory = 1024L * 2L,
+  walltime = 3600L * 24L * 2L, memory = 1024L * 2L,
   clusters = "serial", max.concurrent.jobs = 1000L 
 )
 
 ### REGISTRY AND JOBS TO BE SUBMITTED ### 
 
-reg = loadRegistry("reg_branin", writeable = TRUE)
+reg = loadRegistry("reg_sequential", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm"))
 
-tosubmit = tab[problem == "branin", ]
+tosubmit = tab[problem == "rbv2_super", ]
 tosubmit = ijoin(tosubmit, findNotDone())
 # tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
