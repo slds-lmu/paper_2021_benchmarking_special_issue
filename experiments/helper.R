@@ -133,7 +133,7 @@ compute_total_evals = function(bupper, blower, eta) {
 }
 
 
-computeDatasetForAnalysis = function(dirs, quantiles, parallel = FALSE) {
+computeDatasetForAnalysis = function(dirs, parallel = FALSE) {
 
   if (parallel) {
     library(future.apply)

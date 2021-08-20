@@ -15,7 +15,7 @@ source("experiments/algorithms/smac_.R")
 source("experiments/algorithms/smac_hyperband.R")
 
 # Test setup with reduced budget (see below) or real setup 
-SETUP = "REAL"
+SETUP = "TEST"
 
 switch(SETUP, 
 	"TEST" = {
@@ -158,4 +158,11 @@ des = lapply(ALGORITHMS, function(x) x$ades)
 # TODO: if lower boundary is 0, it must be 0.01 (--> rbv2)
 
 
+
+sample = ConfigSpace.util.deactivate_inactive_hyperparameters(
+				configuration_space=cs,
+				configuration=sample.get_dictionary()
+			).get_dictionary()
+
+sample = cs.sample_configuration()
 

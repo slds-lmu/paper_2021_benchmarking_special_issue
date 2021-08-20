@@ -5,7 +5,7 @@ reg = loadRegistry("reg_temp", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "nobjectives", "objectives_scalar", "algorithm", "algorithm_type", "eta", "full_budget", "log_scale"))
 
-prob = "lcbench"
+prob = "rbv2_super"
 
 
 BUDGET_UPPER = list(

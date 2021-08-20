@@ -23,6 +23,10 @@ smac = function(data, job, instance, full_budget, log_scale = TRUE, multi.point 
 	# For the multipoint variant, we increase the budget by the parallelization factor
 	total_budget = total_budget * multi.point
 
+	# Sample a random number between 0 and 3 minutes to sleep such that not all jobs start at same time and avoid timeout
+	seconds = runif(0, 200)
+	Sys.sleep(seconds)
+
 	start_t = Sys.time()
     out = system2('python3', c("experiments/algorithms/smac_.py", 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 

@@ -236,3 +236,7 @@ if __name__ == "__main__":
 #     init_budget=1,
 # )
 # SobolDesign(cs=cs, **sobol_kwargs).select_configurations()
+
+# with open(config_space_path, 'r') as f:
+#     json_string = f.read()
+#     cs = json.read(json_string)

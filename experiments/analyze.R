@@ -7,15 +7,38 @@ library(ggplot2)
 library(na.tools)
 library(batchtools)
 
-# Learning Curves for the different problems 
 
-#### branin
+### LEARNING CURVES ####
 
 prob = "branin"
 path = file.path("experiments/results_sequential/prepared_files", prob)
 dirs = list.files(path, pattern = ".rds", full.names = TRUE)
 
-df = computeDatasetForAnalysis(dirs, quantiles = seq(-4, 2, by = 0.1), parallel = TRUE)
+df = computeDatasetForAnalysis(dirs)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Learning Curves for the different problems 
+
+#### branin
+
 # saveRDS(df, file.path("experiments/results_sequential/prepared_files_for_analysis", prob, "learning_curves.rds"))
 # readRDS(file.path("experiments/results_sequential/prepared_files_for_analysis", prob, "learning_curves.rds"))
 
