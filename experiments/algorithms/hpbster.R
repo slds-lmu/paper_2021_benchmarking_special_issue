@@ -33,6 +33,8 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
 	# total budget the run is given
 	# Compute the total budget * 32 (such that we can reconstruct parallelization afterwards)
 	fullbudget = ins$terminator$param_set$values$budget * PARALLELIZATION
+	print(fullbudget)
+	print(PARALLELIZATION)
 
 	seconds = runif(0, 200)
 	Sys.sleep(seconds)
