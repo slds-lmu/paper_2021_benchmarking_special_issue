@@ -126,22 +126,22 @@ names(pdes) = surrogates
 # --- 2. ALGORITHM DESIGN ---
 
 ALGORITHMS = list(
-    randomsearch = list(fun = randomsearch, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
+    # randomsearch = list(fun = randomsearch, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
     randomsearch_full_budget = list(fun = randomsearch, ades = data.table(full_budget = TRUE)), 
-    focussearch = list(fun = focussearch, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    focussearch_full_budget = list(fun = focussearch, ades = data.table(full_budget = TRUE)), 
+    # focussearch = list(fun = focussearch, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
+    # focussearch_full_budget = list(fun = focussearch, ades = data.table(full_budget = TRUE)), 
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), # log-scale not relevant
-    mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    mlrintermbo_full_budget = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE)), 
+    # mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
+    # mlrintermbo_full_budget = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE)), 
     # mlrintermbo_full_budget_32 = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE, log_scale = TRUE, multi.point = 32L)), 
     hpbster_hb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
     hpbster_bohb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "bohb")), # log-scale not relevant
     # hpbster_bohb_32 = list(...), # TODO: Variant that is comparable to the parallelized scenario
-    smac = list(fun = smac, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    smac_full_budget = list(fun = smac, ades = data.table(full_budget = TRUE)), 
+    # smac = list(fun = smac, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
+    smac_full_budget = list(fun = smac, ades = data.table(full_budget = TRUE)) 
     # smac_full_budget_32 = list() # TODO: Variant that does the multi-point proposals, 
-    smac_hb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
-    smac_bohb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "bohb")) # log-scale not relevant
+    # smac_hb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
+    # smac_bohb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "bohb")) # log-scale not relevant
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)

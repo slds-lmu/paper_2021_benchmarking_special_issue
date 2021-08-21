@@ -103,11 +103,8 @@ tosubmit_hpbster = tosubmit_hpbster[, .SD[1:30], by = c("task")]
 tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 15)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 
-for (ch in unique(tosubmit_hpbster$chunk)) {
-  Sys.sleep(10)
-  submitJobs(tosubmit_hpbster[chunk == ch, ], resources = resources.serial.default)
-  getStatus(tosubmit_hpbster[chunk == ch, ])
-}
+submitJobs(tosubmit_hpbster[chunk == ch, ], resources = resources.serial.default)
+
 
 
 # 3: HB -- DEPRIORITIZE FOR RBV2_SUPER (--> we have the mlr3hyperband experiments)
