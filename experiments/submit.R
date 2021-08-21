@@ -102,7 +102,12 @@ submitJobs(tosubmit_rs, resources = resources.serial.default)
 tosubmit_hpbster = tosubmit_hpbster[, .SD[1:30], by = c("task")]
 tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 15)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
-submitJobs(tosubmit_hpbster, resources = resources.serial.default)
+
+for (ch in unique(tosubmit_hpbster$chunk)) {
+  Sys.sleep(10)
+  submitJobs(tosubmit_hpbster[chunk == ch, ], resources = resources.serial.default)
+  getStatus(tosubmit_hpbster[chunk == ch, ])
+}
 
 
 # 3: HB -- DEPRIORITIZE FOR RBV2_SUPER (--> we have the mlr3hyperband experiments)
@@ -127,7 +132,7 @@ instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds"
 test_instances = instances[test == TRUE & cfg == "rbv2_super", ]$level
 
 (tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ]) 
-tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 100)
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 96)
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 # This will run for almost 4 days (end of the week)

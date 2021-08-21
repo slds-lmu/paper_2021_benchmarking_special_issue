@@ -21,6 +21,9 @@ safeSetupRegistry = function(registry_name, overwrite, packages, def) {
 
 readProblem = function(data, job, task, objectives, ...) {
 
+  seconds = runif(1, 0, 200)
+  Sys.sleep(seconds)
+
   nobjectives = length(objectives)
 
   dom = data$param_set

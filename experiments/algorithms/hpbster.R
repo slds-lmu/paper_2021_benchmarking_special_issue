@@ -36,9 +36,6 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
 	print(fullbudget)
 	print(PARALLELIZATION)
 
-	seconds = runif(1, 0, 200)
-	Sys.sleep(seconds)
-
 	start_t = Sys.time()
     out = system2('python3', c("experiments/algorithms/hpbster.py",  "--alg", algorithm_type, 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 
