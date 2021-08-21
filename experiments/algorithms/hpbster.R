@@ -36,7 +36,7 @@ hpbster = function(data, job, instance, eta, algorithm_type) {
 	print(fullbudget)
 	print(PARALLELIZATION)
 
-	seconds = runif(0, 200)
+	seconds = runif(1, 0, 200)
 	Sys.sleep(seconds)
 
 	start_t = Sys.time()
