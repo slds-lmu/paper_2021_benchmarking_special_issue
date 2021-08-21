@@ -70,7 +70,7 @@ lapply(packages, library, character.only = TRUE)
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
-surrogates = c("lcbench", "branin", "rbv2_super") # c("nb301", "lcbench", "rbv2_super", "branin")
+surrogates = c("lcbench", "branin", "rbv2_super", "nb301") 
 
 # Downloads all surrogate data 
 options(timeout=60^2) # set very high timeout to make sure everything is downloaded
