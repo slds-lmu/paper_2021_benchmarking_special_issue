@@ -21,7 +21,7 @@ safeSetupRegistry = function(registry_name, overwrite, packages, def) {
 
 readProblem = function(data, job, task, objectives, ...) {
 
-  seconds = runif(1, 0, 200)
+  seconds = runif(1, 0, 45)
   Sys.sleep(seconds)
 
   nobjectives = length(objectives)

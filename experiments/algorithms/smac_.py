@@ -162,7 +162,7 @@ def main(args):
                          "cs": cs,  # configuration space
                          "deterministic": "true", 
                          "memory_limit": 2048, 
-                         "wallclock-limit": 30 * 60, # Each run should take at max. half an hour (usually much faster!)
+                         "wallclock-limit": 45 * 60, # Each run should take at max. half an hour (usually much faster!)
                          "output_dir": args.tempdir
                          }
 

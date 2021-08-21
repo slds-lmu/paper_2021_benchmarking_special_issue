@@ -103,7 +103,7 @@ tosubmit_hpbster = tosubmit_hpbster[, .SD[1:30], by = c("task")]
 tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 15)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 
-submitJobs(tosubmit_hpbster[chunk == ch, ], resources = resources.serial.default)
+submitJobs(tosubmit_hpbster[chunk > 10, ], resources = resources.serial.default)
 
 
 
@@ -129,12 +129,11 @@ instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds"
 test_instances = instances[test == TRUE & cfg == "rbv2_super", ]$level
 
 (tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ]) 
-tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 96)
+tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 64)
+# 96 in a chunk --> 64 * 45 = 2880 mins / 60 = 48 h / chunk 
+# total number of exps: 85440 / 64 = 1335
 tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
-# This will run for almost 4 days (end of the week)
-
-
 
 
 
