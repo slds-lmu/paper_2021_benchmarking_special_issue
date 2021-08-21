@@ -92,7 +92,8 @@ names(surr_data) = surrogates
 pdes = list(# nb301 = data.table(objectives = c("val_accuracy")), 
 			lcbench = data.table(objectives = c("val_cross_entropy")), 
 			branin = data.table(objectives = c("y")),
-			rbv2_super = data.table(objectives = c("logloss")) 
+			rbv2_super = data.table(objectives = c("logloss")),
+			nb301 = data.table(objectives = c("val_accuracy")) 
 			)
 
 
