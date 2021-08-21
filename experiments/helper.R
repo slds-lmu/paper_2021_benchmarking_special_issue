@@ -106,7 +106,7 @@ compute_total_budget = function(bupper, blower, eta) {
 
   out = lapply(brackets, function(s) {
     n = ceiling(B / bupper * eta^s / (s + 1))
-    r = bupper * eta^(-s)
+    r = round(bupper * eta^(-s))
     out = lapply(seq(0, s), function(i) {
       ni = floor(n * eta^(-i))
       ri = r * eta^i
@@ -136,61 +136,123 @@ compute_total_evals = function(bupper, blower, eta) {
 }
 
 
-computeDatasetForAnalysis = function(dirs, parallel = FALSE) {
+computeDatasetForAnalysis = function(dirs, type = "sequential") {
 
-  if (parallel) {
-    library(future.apply)
-    plan(multisession)
-    fun = future_lapply
-  } else {
-    fun = lapply
-  }
+  MAX_BUDGET_SEQUENTIAL = list(
+      lcbench = 7 * 52 * 30,
+      rbv2_super = 38 * 1 * 30,
+      nb301 = 34 * 98 * 30
+    )
 
-  out = fun(dirs, function(d) {
+  BUDGET_OF_HB_RUN = list(
+    lcbench = compute_total_budget(52, 1, 3)
+  )
+
+  out = lapply(dirs, function(d) {
     print(d)
     df = readRDS(d)
 
+    if (type == "sequential") {
+      df = df[, .SD[1:30], by = c("task")]
+    }
+
     results = df$result
     jids = df$job.id
+
+    prob = df$problem[1]
+    algo = df$algorithm[1]
+
     out = lapply(1:length(results), function(i) {
+
       outd = cbind(job.id = jids[i], algorithm = df[i, ]$algorithm, task = df[i, ]$task, problem = df[i, ]$problem, results[[i]][, c("budget", "performance")])
       outd = as.data.table(outd)
-      outd = outd[, budget_cum := cumsum(budget), by = c("job.id")]
-      outd = outd[budget_cum <= 30 * 9 * 52, ]
-      outd = outd[, perfmin := cummin(performance), by = c("job.id")]
+
+      if (type == "sequential") {
+        outd = outd[, budget_cum := cumsum(budget), by = c("job.id")]
+        outd = outd[budget_cum <= MAX_BUDGET_SEQUENTIAL[[prob]], ]
+        outd = outd[, perfmin := cummin(performance), by = c("job.id")]
+      } else {
+
+        ## TODO: smashy parallel analysis 
+
+        if (algo == "smashy_config_lcbench") {
+          outd = NULL
+        }
+
+        if (algo == "randomsearch_full_budget") {
+          outd$core = rep(1:32, each = nrow(outd) / 32)
+          outd = outd[, iteration := 1:.N, by = c("core")]
+          outd = outd[, .(perfmin_across_cores = min(performance)), by = c("job.id", "algorithm", "task", "budget", "iteration")]
+          outd$budget = outd$budget * 32
+        }
+
+        if (algo == "smac_full_budget") {
+          outd$core = i %% 32L
+          outd = outd[, iteration := 1:.N, by = c("core")]
+        }
+
+        if (algo == "mlr3hyperband") {
+          diffs = c(outd$budget[2:nrow(outd)] - outd$budget[seq_len(nrow(outd) - 1)])
+          hblen = which(diffs == -50)[1]
+          nhbruns = length(which(diffs == -50))
+          outd$hb_run_id = rep(seq(1, nhbruns + 1), each = hblen)
+
+          hb_runs_per_core = floor(max(outd$hb_run_id) / 32L)
+
+          # chunk runs
+          hb_id_chunk = data.table(hb_run_id = seq(1, max(outd$hb_run_id)))[1:(32L * hb_runs_per_core), ]
+          hb_id_chunk$core = rep(1:32L, each = hb_runs_per_core)
+
+          outd = batchtools::ijoin(outd, hb_id_chunk, by = c("hb_run_id"))
+          outd = outd[, iteration := 1:.N, by = c("core")]
+
+          # Get the number of full hyperband runs 
+          outd$cumsum = cumsum(outd$budget)
+          total_budget_hb = BUDGET_OF_HB_RUN[[prob]] 
+          outd$hb_run = outd$cumsum / total_budget_hb
+
+          outd = outd[, .(perfmin_across_cores = min(performance), budget = sum(budget)), by = c("job.id", "algorithm", "task", "iteration")]
+
+          outd$algorithm = "mlr3hyperband"
+        }
+
+        if (algo == "hpbster_bohb") {
+          diffs = c(0, outd$budget[2:nrow(outd)] - outd$budget[seq_len(nrow(outd) - 1)])
+          hblen = which(diffs == -50)[1]
+          nhbruns = which(diffs == -50)
+          outd$bracket_change = FALSE
+          outd[1:length(diffs), ]$bracket_change = diffs != 0
+          outd$stage_id = cumsum(outd$bracket_change)[1:nrow(outd)]
+
+          outd$budget_spent_ignore_cores = outd$budget
+
+          outd[, n_configs_stage := .N, by = c("stage_id")]
+          outd[, budget := 32 / n_configs_stage * budget_spent_ignore_cores, by = c("stage_id")]
+
+          outd = outd[, .(perfmin_across_cores = min(performance), budget = sum(budget)), by = c("job.id", "algorithm", "task", "stage_id")]
+        }
+      }
+      return(outd)
     })
-    out = do.call(rbind, out)
+    out = setDT(do.call(rbind, out))
 
-    df = NULL
+    if (nrow(out) > 0) {
+      out$problem = prob
 
-    # Budget in multiples of the maximum budget and on a logarithmic scale 
-    out$budget_cum_log = log(out$budget_cum / max(out$budget), 10)
-    # df_sub = lapply(quantiles, function(q) {
-    #   cbind(dh[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
-    # })
-    # df_sub = do.call(rbind, df_sub)
+      if (algo == "smac_full_budget" & type == "parallel") {
+        # Compute the minimum across cores   
+        out = out[, .(perfmin_across_cores = min(performance)), by = c("job.id", "problem", "algorithm", "task", "budget", "iteration")]
+        out$budget = out$budget * 32
+      }
 
-    # df_sub2 = lapply(quantiles, function(q) {
-    #   dhs = dh[budget == max(dh$budget), ]
-    #   cbind(dhs[budget_cum_log <= q, .SD[which.min(performance)], by = c("job.id")], q = q)
-    # })
-    # df_sub2 = do.call(rbind, df_sub2)
-    # names(df_sub2)[which(names(df_sub2) == "performance")] = "perf_min_on_full_budget"
-
-    # df_to_add = merge(df_sub, df_sub2[, c("q", "perf_min_on_full_budget", "job.id")], by = c("q", "job.id"), all.x = TRUE)
-
-    # Add metadata 
-    # dm = df
-    # dm$result = NULL
-    # dm = merge(dm, df_to_add, by = c("job.id"), all.y = TRUE)
+      out = out[, c("job.id", "problem", "algorithm", "task", "perfmin_across_cores", "budget")]
+    }
 
     return(out)
   })
 
   out = do.call(rbind, out)
-  
-  # if (any(is.na(out2$problem)))
-  #   out2 = out2[- which(is.na(out2$problem)), ]
+
 
   # Comparison with randomsearch 
 
@@ -200,11 +262,21 @@ computeDatasetForAnalysis = function(dirs, parallel = FALSE) {
     out$y_max = 485.3732
   } else {
     # Compute the overall minimum and maximum per problem 
-    minmax = out[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+    if (type == "sequential") {
+      minmax = out[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+    }
+    if (type == "parallel") {
+      minmax = out[, .(y_min = min(perfmin_across_cores), y_max = max(perfmin_across_cores)), by = c("task")]      
+    }
     out = merge(out, minmax, all.x = TRUE, by = c("task"))
   }
 
-  out$normalized_regret = (out$perfmin - out$y_min) / (out$y_max - out$y_min)
+  if (type == "sequential") {
+    out$normalized_regret = (out$perfmin_across_cores - out$y_min) / (out$y_max - out$y_min)
+  }
+  if (type == "parallel") {
+    out$normalized_regret = (out$perfmin_across_cores - out$y_min) / (out$y_max - out$y_min)
+  }
 
   return(out)
 }
