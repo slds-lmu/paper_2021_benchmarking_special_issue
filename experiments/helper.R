@@ -243,9 +243,9 @@ computeDatasetForAnalysis = function(dirs, type = "sequential") {
         # Compute the minimum across cores   
         out = out[, .(perfmin_across_cores = min(performance)), by = c("job.id", "problem", "algorithm", "task", "budget", "iteration")]
         out$budget = out$budget * 32
-      }
 
-      out = out[, c("job.id", "problem", "algorithm", "task", "perfmin_across_cores", "budget")]
+        out = out[, c("job.id", "problem", "algorithm", "task", "perfmin_across_cores", "budget")]
+      }
     }
 
     return(out)
@@ -272,7 +272,7 @@ computeDatasetForAnalysis = function(dirs, type = "sequential") {
   }
 
   if (type == "sequential") {
-    out$normalized_regret = (out$perfmin_across_cores - out$y_min) / (out$y_max - out$y_min)
+    out$normalized_regret = (out$perfmin - out$y_min) / (out$y_max - out$y_min)
   }
   if (type == "parallel") {
     out$normalized_regret = (out$perfmin_across_cores - out$y_min) / (out$y_max - out$y_min)

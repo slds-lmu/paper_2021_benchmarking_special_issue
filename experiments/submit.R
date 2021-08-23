@@ -127,11 +127,11 @@ submitJobs(tosubmit_hb, resources = resources.serial.default)
 instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds")
 test_instances = instances[test == TRUE & cfg == "rbv2_super", ]$level
 
-(tosubmit_smac = tosubmit[algorithm == "smac_full_budget" & task %in% test_instances, ]) 
+(tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ] #  & task %in% test_instances, ]) 
 tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 64)
 # 96 in a chunk --> 64 * 45 = 2880 mins / 60 = 48 h / chunk 
 # total number of exps: 85440 / 64 = 1335
-tosubmit_smac = tosubmit_smac[- which(job.id %in% findQueued()$job.id), ]
+tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
 submitJobs(tosubmit_smac, resources = resources.serial.default)
 
 
