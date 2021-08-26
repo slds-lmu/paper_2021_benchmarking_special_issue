@@ -26,7 +26,7 @@ ijoin(res, done)
 
 path = "experiments/results_sequential/prepared_files"
 
-prob = "lcbench"
+prob = "rbv2_super"
 algos = c("randomsearch_full_budget", "mlr3hyperband", "hpbster_bohb", "smac_full_budget")#, "smac_hb", "smac_bohb")
 
 # Check if all the runs are complete
@@ -38,9 +38,9 @@ table(sub_tab$task, sub_tab$algorithm)
 for (algo in algos) {
 	tored = sub_tab[problem == prob & algorithm == algo, ]
 
-	if (nrow(tored) < 30) {
-		stop(paste0("Stop: ", nrow(tored), " < ", 30))
-	} else {
+	# if (nrow(tored) < 30) {
+	# 	stop(paste0("Stop: ", nrow(tored), " < ", 30))
+	# } else {
 		print(paste("Reducing: ", algo))
 		
 		res = reduceResultsDataTable(tored, function(x) {
@@ -67,12 +67,15 @@ for (algo in algos) {
 					if (file.exists(file.path(path, "results.json"))) {
 						start = Sys.time()
 
-						df = readLines(file.path(path, "results.json")) %>% lapply(fromJSON)
-						df = lapply(df, function(x) {
-							cbind(t(as.data.table(x[[1]])), x[[2]], x[[4]]$loss, x[[3]]$submitted)
-						})
-						df = as.data.table(do.call(rbind, df))
-						colnames(df) = c("cid1", "cid2", "cid3", "budget", "performance", "submitted")
+						df = readLines(file.path(path, "results.json")) %>% lapply(function(x) {
+							tryCatch({
+								input = fromJSON(x, flatten = TRUE)
+								out = cbind(matrix(input[[1]], nrow = 1), input[[2]], input[[4]]$loss, input[[3]]$submitted)
+								out
+							}, error = function(cond) return(NULL))})
+						df = do.call(rbind, df)
+						df = as.data.table(df)
+						colnames(out) = c("cid1", "cid2", "cid3", "budget", "performance", "submitted")
 						rownames(df) = NULL
 
 						# configs = readLines(file.path(path, "configs.json")) %>% lapply(fromJSON)
@@ -84,7 +87,9 @@ for (algo in algos) {
 						# df = merge(df, configs, all.x = TRUE, by = c("cid1", "cid2", "cid3"))
 
 						df = df[order(df$submitted, df$cid1, df$cid3), ]
-						df$budget = round(df$budget) # Correction to match the actual budget 
+						if (prob != "rbv2_super") {
+							df$budget = round(df$budget) # Correction to match the actual budget 
+						}
 						end = Sys.time()
 						
 						print(end - start)
@@ -102,15 +107,15 @@ for (algo in algos) {
 					}
 				}
 					
-				if (tab[job.id == jid, ]$objectives == "val_accuracy")
-					df$performance = (-1) * df$performance
+				# if (tab[job.id == jid, ]$objectives == "val_accuracy")
+				# 	df$performance = (-1) * df$performance
 				
 				return(df)
 			})	
 
 			res$result = updates	
 		}
-	}
+	# }
 	
 	res = ijoin(tab, res)	
 
@@ -118,7 +123,7 @@ for (algo in algos) {
 
 	dir.create(savepath, recursive = TRUE)
 
-	saveRDS(res, file.path(savepath, paste0(algo, ".rds")))
+	saveRDS(res, file.path(savepath, paste0(algo, "_30.rds")))
 }
 
 
