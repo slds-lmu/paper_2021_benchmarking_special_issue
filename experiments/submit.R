@@ -1,11 +1,15 @@
+data.table::setDTthreads(1)
+
 source("experiments/config.R")
 
 ### CLUSTER CONFIGURATION ### 
 
 resources.serial.default = list(
-  walltime = 3600L * 24L * 2L, memory = 1024L * 2L,
+  walltime = 3600L * 24L * 4L, memory = 1024L * 2L,
   clusters = "serial", max.concurrent.jobs = 1000L 
 )
+
+# 4000 MB on teton
 
 ### REGISTRY AND JOBS TO BE SUBMITTED ### 
 
@@ -13,95 +17,28 @@ reg = loadRegistry("reg_sequential", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "algorithm", "objectives"))
 
+# tosubmit = tab[problem == "lcbench", ]
 tosubmit = tab[problem == "rbv2_super", ]
 tosubmit = ijoin(tosubmit, findNotDone())
-# tosubmit = tosubmit[- which(job.id %in% findOnSystem()$job.id), ]
 
-
-### TODO ###
-
-# [x] Check what impact deterministic = TRUE has? --> Multiple evaluations of a single config with different seeds
-# [x] Check whether budget is correctly computed for hpbandster hb / bohb
-# [x] Submit remaining experiments for smac on lcbench
-# [ ] Submit remaining experiments for rbv2_super
-# [x] Submit everything for nasbench
 
 
 ### STATUS OF JOBS  ### 
 
 ##  LCBENCH         ## 
 ##  (35 TAKS)       ##
-
-### - Registry: reg_sequential (LRZ)
-### - Completed: 
-###   - randomsearch_full_budget: 5.50 mins  (Budget factor 32) 
-###   - hpbster_hb:               16.0 mins  (Evaluation bug -- ordering of archive -- was fixed!)
-###   - hpbster_bohb:             4.74 mins  (Budget factor increased for evaluation; Evaluation bug -- ordering of archive -- was fixed!)
-###   - mlr3hyperband:            4.8 minutes 
-###   - focussearch_full_budget:  0.25 minutes
-### - Submitted: 
-###   - smac_full_budget:         5.9 minutes (all submitted; expected AUGUST 26nd, 6PM)
-
+##  ru59sol2
 
 ##  RBV2_SUPER      ## 
 ##  (89 TAKS)       ##
-
-### - Registry: reg_sequential (LRZ)
-### - Completed: 
-###   - randomsearch_full_budget: 98 mins      (Budget factor 32) 
-###   - mlr3hyperband:            101 minutes  (Budget factor 32)
-###   - smac_full_budget_30:                   (only 1 / 32 parallel replications; run on di25pic2)
-
-### - Submitted: 
-###   - hpbster_bohb:             120 mins (20?) (Resubmitted a few on 26th of August, because they were expired)
-
-### - Not submitted: 
-###   - smac_full_budget:                      (to be submitted on WYOMING cluster)
-###   - focussearch_full_budget:  1.2 minutes  
-###   - hpbster_hb (DEPRIO):      120 mins (Resubmit after update of evaluation script -- ordering of archive)
+##  ru59sol2 
+##  except for smac_full_budget --> Wyoming
 
 
-##  NB301      ## 
-##  (89 TAKS)       ##
-
-### - Registry: reg_sequential (LRZ) [EVERYTHING RUNNING, NO ERRORS; PROBABLY COMPLETED ON AUGUST 25th]
-### - Completed: 
-###   - randomsearch_full_budget: 60 mins      (Budget factor 32) 
-###   - mlr3hyperband:            90 minutes  (Budget factor 32)
-###   - hpbster_bohb:             120 mins (20?) (Resubmit after update of evaluation script -- ordering of archive)
-###   - smac_full_budget:         30 minutes (Re-submit after version update of SMAC on cluster)
-### - Submitted: 
-### - Not submitted: 
-###   - focussearch_full_budget:  1.2 minutes  
+##  NB301
+##  di25pic2
 
 
-##  BRANIN      ## 
-##  (1 TASK)       ##
-
-### - Registry: reg_branin (locally submitted)
-### - Completed: 
-###   -
-### - Submitted: 
-###   - randomsearch_full_budget
-###   - mlr3hyperband
-###   - mlrintermbo_full_budget
-###   - hpbster_hb
-###   - hpbster_bohb
-###   - smac_full_budget
-### - Not submitted:  
-###   - random_search
-###   - mlrintermbo
-###   - smac
-
-
-
-### Not submitted (not needed for final evaluation)
-
-###   - mlrintermbo (smac is a good baseline)
-###   - randomsearch (not on full budget)
-###   - smac_hb: 1.4 minutes (RUNNING, ERROR FIXED)
-###   - smac_bohb: 15 minutes  (RUNNING, ERROR FIXED)
-###   - focussearch 
 
 table(ijoin(tosubmit, findDone())$algorithm)
 table(ijoin(tosubmit, findRunning())$algorithm)
@@ -116,7 +53,7 @@ submitJobs(tosubmit_rs, resources = resources.serial.default)
 # 2: BOHB -- PROBLEM: TAKING TOO LONG
 (tosubmit_hpbster = tosubmit[algorithm == "hpbster_bohb", ])
 tosubmit_hpbster = tosubmit_hpbster[, .SD[1:30], by = c("task")]
-tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 17)
+tosubmit_hpbster$chunk = batchtools::chunk(tosubmit_hpbster$job.id, chunk.size = 20)
 tosubmit_hpbster = tosubmit_hpbster[- which(job.id %in% findOnSystem()$job.id), ]
 
 submitJobs(tosubmit_hpbster, resources = resources.serial.default)
@@ -143,22 +80,14 @@ submitJobs(tosubmit_hb, resources = resources.serial.default)
 instances = readRDS("../paper_2021_multi_fidelity_surrogates/inst/instances.rds")
 test_instances = instances[test == TRUE & cfg == "rbv2_super", ]$level
 
-# 1 PARALLEL ITER COMPUTED ON MARTIN'S ACCOUNT (30 HOURS FROM 24.8. 10 AM)
-# FULL 32 RUNS ON WYOMING CLUSTER (T.B.D.! )
 
-for (parallel_iter in 1:32) {
-  # 1 parallel iter has 
-  (tosubmit_smac = tosubmit[algorithm == "smac_full_budget", ]) #  & task %in% test_instances, ]) 
-  iters = seq((parallel_iter - 1) * 30 + 1, parallel_iter * 30)
-  tosubmit_smac = tosubmit_smac[, .SD[iters], by = c("task")]
-
-  tosubmit_smac$chunk = batchtools::chunk(tosubmit_smac$job.id, chunk.size = 2)
-  # 96 in a chunk --> 64 * 45 = 2880 mins / 60 = 48 h / chunk 
-  # total number of exps: 85440 / 64 = 1335
-  tosubmit_smac = tosubmit_smac[- which(job.id %in% findOnSystem()$job.id), ]
-  submitJobs(tosubmit_smac, resources = resources.serial.default)
-}
-
-
-
+### - Registry: reg_sequential (LRZ)
+### - Completed: 
+###   - randomsearch_full_budget: 5.50 mins  (Budget factor 32) 
+###   - hpbster_hb:               16.0 mins  (Evaluation bug -- ordering of archive -- was fixed!)
+###   - hpbster_bohb:             4.74 mins  (Budget factor increased for evaluation; Evaluation bug -- ordering of archive -- was fixed!)
+###   - mlr3hyperband:            4.8 minutes 
+###   - focussearch_full_budget:  0.25 minutes
+### - Submitted: 
+###   - smac_full_budget:         5.9 minutes (all submitted; expected AUGUST 26nd, 6PM)
 
