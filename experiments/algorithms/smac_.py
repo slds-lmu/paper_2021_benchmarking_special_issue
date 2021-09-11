@@ -45,7 +45,10 @@ class worker():
         self.budget_on_log = budget_on_log
         self.mfsurrogates = importr("mfsurrogates")
         if problem in ["lcbench", "rbv2_super", "nb301"]:
-            self.session = onnxruntime.InferenceSession("experiments/problems/" + problem + "/model.onnx")
+            opts = onnxruntime.SessionOptions()
+            opts.inter_op_num_threads = 1
+            opts.intra_op_num_threads = 1
+            self.session = onnxruntime.InferenceSession("experiments/problems/" + problem + "/model.onnx", sess_options = opts)
             self.param_set = base.readRDS("experiments/problems/" + problem + "/param_set.rds")
             self.codomain = base.readRDS("experiments/problems/" + problem + "/codomain.rds")  
             self.data_order = base.readRDS("experiments/problems/" + problem + "/data_order.rds")        

@@ -23,6 +23,10 @@ smac = function(data, job, instance, full_budget, log_scale = TRUE, multi.point 
 	# For the multipoint variant, we increase the budget by the parallelization factor
 	total_budget = total_budget * multi.point
 
+	# job = list(external.dir = ".", seed = 21)
+	# full_budget = 100
+	# log_scale = TRUE
+
 	start_t = Sys.time()
     out = system2('python3', c("experiments/algorithms/smac_.py", 
     	" --problem ", instance$name, " --tempdir ", job$external.dir, 

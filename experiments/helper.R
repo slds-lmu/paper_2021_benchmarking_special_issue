@@ -136,6 +136,257 @@ compute_total_evals = function(bupper, blower, eta) {
 }
 
 
+
+
+plotAggregatedLearningCurves = function(df, var = "perf_mean", x = "budget", y_name = NULL, se = FALSE) {
+
+  if (is.null(y_name)) {
+    y_name = var
+  }
+
+  p = ggplot(data = df, aes_string(x = x, y = var, colour = "algorithm", fill = "algorithm")) 
+  if (se)
+    p = p + geom_ribbon(aes_string(x = x, ymin = "lower", ymax = "upper", fill = "algorithm"), alpha = 0.25, colour = NA)
+  p = p + geom_line()
+  # p = p + geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.1, colour = NA)
+  p = p + theme_bw()
+  # p = p + scale_x_continuous(breaks = seq(0, 4, by = 1),
+  #         labels= 10^seq(0, 4))
+  p = p + ylab(y_name)
+  p
+}
+
+
+
+
+getResultsTable = function(tab, algo, prob, filedir, budget_max, objective_multiplier = 1) {
+
+  print(paste("Reducing: ", algo))
+
+  tored = tab[problem == prob & algorithm == algo, ]
+  tored = ijoin(tored, findDone())
+
+  tored = tored[, .SD[1:30], by = c("task")]
+
+  jids = tored$job.id
+
+  # For the python scripts it does not give us the result 
+  res = reduceResultsDataTable(jids[!is.na(jids)], function(x) {
+    out = x$archive[, c("budget", "performance")]
+    if (!is.null(out)) {
+      out$budget_cum = cumsum(out$budget)
+      out = out[budget_cum <= budget_max, ]
+    }   
+    return(out)
+  })
+
+  if (algo %in% c("smac_full_budget", "hpbster_bohb", "hpbster_hb")) {
+    updates = lapply(res$job.id, function(jid) reduceJIDpythonSimple(jid, algo, filedir, budget_max))
+
+    res$result = updates  
+  }
+
+  return(res)
+}
+
+reduceJIDpythonSimple = function(jid, algo, filedir, budget_max = NULL) {
+
+    print(jid)
+
+    df = NULL
+    path = file.path(filedir, "external", jid)
+
+    # Manually read in the logged files 
+    if (algo %in% c("smac", "smac_full_budget", "smac_bohb", "smac_hb")) {
+
+      library(reticulate)
+      library(dplyr)
+      pd = import("pandas")
+
+      if (file.exists(file.path(path, "results.pkl"))) {
+        
+        df = as.data.table(pd$read_pickle(file.path(path, "results.pkl")))
+        df$budget = round(df$budget) # Needs to be done as correction for correct representation
+        df$budget_cum = cumsum(df$budget)
+        if (!is.null(budget_max))
+          df = df[budget_cum <= budget_max, ]
+        return(df)
+
+      } else {
+        warning(paste0("Results file does not exist for ", jid))
+      }
+    }
+
+    if (algo %in% c("hpbster_hb", "hpbster_bohb")) {
+                
+      if (file.exists(file.path(path, "results.json"))) {
+
+        library(dplyr)
+
+        df = readLines(file.path(path, "results.json")) %>% lapply(function(x) {
+          tryCatch({
+            input = rjson::fromJSON(x)
+            out = cbind(matrix(input[[1]], nrow = 1), input[[2]], input[[4]]$loss, input[[3]]$submitted)
+            out
+          }, error = function(cond) return(NULL))})
+        df = do.call(rbind, df)
+        df = as.data.table(df)
+        colnames(df) = c("cid1", "cid2", "cid3", "budget", "performance", "submitted")
+        rownames(df) = NULL
+
+        df = df[order(df$submitted, df$cid1, df$cid3), ]
+        if (prob != "rbv2_super") {
+          df$budget = round(df$budget) # Correction to match the actual budget 
+        }
+
+        df$budget_cum = cumsum(df$budget)
+        if (!is.null(budget_max))
+          df = df[budget_cum <= budget_max, ]
+
+    } 
+  }
+  return(df)
+}
+
+
+
+getResultsTableParallel = function(tab, algo, prob, filedir, budget_max, objective_multiplier = 1) {
+
+  print(paste("Reducing: ", algo))
+
+  tored = tab[problem == prob & algorithm == algo, ]
+  tored = ijoin(tored, findDone())
+
+  # For the python scripts it does not give us the result 
+  res = reduceResultsDataTable(tored$job.id, function(x) {
+    out = x$archive[, c("budget", "performance")]   
+
+    if (!is.null(out)) {
+      if (algo == "randomsearch_full_budget") {
+        out$core = rep(1:32, each = nrow(out) / 32)
+        out = out[, iteration := 1:.N, by = c("core")]
+        out = out[, .(budget = sum(budget), performance = min(performance)), by = c("iteration")]
+      } 
+
+      if (algo == "mlr3hyperband") {
+        diffs = c(out$budget[2:nrow(out)] - out$budget[seq_len(nrow(out) - 1)])
+        hblen = which(diffs == -50)[1]
+        nhbruns = length(which(diffs == -50))
+        out$hb_run_id = rep(seq(1, nhbruns + 1), each = hblen)
+
+        hb_runs_per_core = floor(max(out$hb_run_id) / 32L)
+
+        # chunk runs
+        hb_id_chunk = data.table(hb_run_id = seq(1, max(out$hb_run_id)))[1:(32L * hb_runs_per_core), ]
+        hb_id_chunk$core = rep(1:32L, each = hb_runs_per_core)
+
+        out = batchtools::ijoin(out, hb_id_chunk, by = c("hb_run_id"))
+        out = out[, iteration := 1:.N, by = c("core")]
+
+        out = out[, .(budget = sum(budget), performance = min(performance)), by = c("iteration")]
+      }
+    }
+    return(out)
+  })
+
+  if (algo %in% c("smac_full_budget", "hpbster_bohb", "hpbster_hb")) {
+    updates = lapply(res$job.id, function(jid) reduceJIDpythonSimple(jid, algo, filedir))
+
+    res$result = updates  
+  }
+
+  # FOR SMAC, AGGREGATE OVER PARALLEL RUNS 
+  if (algo == "smac") {
+
+
+  } 
+
+  # FOR BOHB
+
+
+  return(res)
+}
+
+
+readAndConcatenateFiles = function(filepaths) {
+    reslist = lapply(filepaths, function(file) {
+        x = readRDS(file)
+        out = lapply(1:nrow(x), function(i) {
+            cbind(job.id = x$job.id[i], x$result[[i]])
+        })
+        out = do.call(rbind, out)
+        batchtools::ijoin(x[, c("job.id", "problem", "task", "objectives", "algorithm")], out[, c("job.id", "budget", "performance")], by = "job.id")    
+    })
+    res = do.call(rbind, reslist)
+    return(res)
+}
+
+
+# Compute normalized regret
+computeNormalizedRegret = function(df, objective_multiplier = 1) {
+    # for lcbench, set it to -1 
+    df$performance = df$performance * objective_multiplier
+    
+    # Overall best result achieved by randomsearch per task 
+    if (df$problem[1] == "branin") {
+        df$y_min = 0.3978874
+        df$y_max = 485.3732
+    } else {
+        # Compute the overall minimum and maximum per problem 
+        minmax = df[algorithm == "randomsearch_full_budget", ][, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+        df = merge(df, minmax, all.x = TRUE, by = c("task"))
+    }
+    
+    (df$performance - df$y_min) / (df$y_max - df$y_min)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 computeDatasetForAnalysis = function(dirs, type = "sequential", min_max = "min") {
 
   MAX_BUDGET_SEQUENTIAL = list(
@@ -168,25 +419,30 @@ computeDatasetForAnalysis = function(dirs, type = "sequential", min_max = "min")
     prob = df$problem[1]
     algo = df$algorithm[1]
 
-    if (prob == "rbv2_super") {
-      subset_idx = round(exp(seq(log(1), log(nrow(results[[1]])), length.out = 1000)))
-    }
+    # if (prob == "rbv2_super") {
+    #   subset_idx = round(exp(seq(log(1), log(nrow(results[[1]])), length.out = 1000)))
+    # }
 
     out = lapply(1:length(results), function(i) {
 
+      print(i)
+
       if (!is.null(results[[i]])) {
-        outd = cbind(job.id = jids[i], algorithm = df[i, ]$algorithm, task = df[i, ]$task, problem = df[i, ]$problem, results[[i]][, c("budget", "performance")])
+        outd = cbind(job.id = jids[i], algorithm = df[i, ]$algorithm, task = df[i, ]$task, problem = df[i, ]$problem, results[[i]][, c("budget_boundary", "performance")])
         outd = as.data.table(outd)
+
+        names(outd)[5] = "budget_cum"
 
         outd$performance = outd$performance * objective_multiplier
 
         if (type == "sequential") {
-          outd = outd[, budget_cum := cumsum(budget), by = c("job.id")]
-          outd = outd[budget_cum <= MAX_BUDGET_SEQUENTIAL[[prob]], ]
-          outd = outd[, perfmin := cummin(performance), by = c("job.id")]
-          if (prob == "rbv2_super") {
-            outd = outd[subset_idx, ]
-          }
+          # outd = outd[, budget_cum := cumsum(budget), by = c("job.id")]
+          # outd = outd[budget_cum <= MAX_BUDGET_SEQUENTIAL[[prob]], ]
+          # outd = outd[, perfmin := cummin(performance), by = c("job.id")]
+          # if (prob == "rbv2_super") {
+          #   outd = outd[subset_idx, ]
+          #   outd = outd[, .SD[!is.na(outd$performance)], ]
+          # }
         } else {
 
           ## TODO: smashy parallel analysis 
@@ -271,7 +527,6 @@ computeDatasetForAnalysis = function(dirs, type = "sequential", min_max = "min")
 
   out = do.call(rbind, out)
 
-
   # Comparison with randomsearch 
 
   # Overall best result achieved by randomsearch per task 
@@ -281,7 +536,7 @@ computeDatasetForAnalysis = function(dirs, type = "sequential", min_max = "min")
   } else {
     # Compute the overall minimum and maximum per problem 
     if (type == "sequential") {
-      minmax = out[, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
+      minmax = out[algorithm == "randomsearch_full_budget", ][, .(y_min = min(performance), y_max = max(performance)), by = c("task")]
     }
     if (type == "parallel") {
       minmax = out[, .(y_min = min(perfmin_across_cores), y_max = max(perfmin_across_cores)), by = c("task")]      
@@ -290,7 +545,7 @@ computeDatasetForAnalysis = function(dirs, type = "sequential", min_max = "min")
   }
 
   if (type == "sequential") {
-    out$normalized_regret = (out$perfmin - out$y_min) / (out$y_max - out$y_min)
+    out$normalized_regret = (out$performance - out$y_min) / (out$y_max - out$y_min)
   }
   if (type == "parallel") {
     out$normalized_regret = (out$perfmin_across_cores - out$y_min) / (out$y_max - out$y_min)
@@ -308,22 +563,4 @@ computeDatasetForAnalysis = function(dirs, type = "sequential", min_max = "min")
 
 
 
-
-plotAggregatedLearningCurves = function(df, var = "perf_mean", x = "budget", y_name = NULL, se = FALSE) {
-
-  if (is.null(y_name)) {
-    y_name = var
-  }
-
-  p = ggplot(data = df, aes_string(x = x, y = var, colour = "algorithm", fill = "algorithm")) 
-  if (se)
-    p = p + geom_ribbon(aes_string(x = x, ymin = "lower", ymax = "upper", fill = "algorithm"), alpha = 0.25, colour = NA)
-  p = p + geom_line()
-  # p = p + geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.1, colour = NA)
-  p = p + theme_bw()
-  # p = p + scale_x_continuous(breaks = seq(0, 4, by = 1),
-  #         labels= 10^seq(0, 4))
-  p = p + ylab(y_name)
-  p
-}
 
