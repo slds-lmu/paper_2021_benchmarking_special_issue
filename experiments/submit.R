@@ -40,9 +40,6 @@ tosubmit = ijoin(tosubmit, findNotDone())
 
 
 
-
-
-
 table(ijoin(tosubmit, findDone())$algorithm)
 table(ijoin(tosubmit, findRunning())$algorithm)
 

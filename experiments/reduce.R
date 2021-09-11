@@ -1,12 +1,12 @@
 source("experiments/config.R")
 source("experiments/helper.R")
 
+# Reduce is called on cluster only
 
 # Load real registry
 reg = loadRegistry("reg_sequential", writeable = TRUE)
 
 tab = summarizeExperiments(by = c("job.id", "problem", "task", "objectives", "algorithm", "full_budget"))
-
 
 # Reduce results from cluster
 filedir = reg$file.dir

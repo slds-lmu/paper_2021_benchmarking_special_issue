@@ -269,6 +269,7 @@ getResultsTableParallel = function(tab, algo, prob, filedir, budget_max, objecti
       } 
 
       if (algo == "mlr3hyperband") {
+        # ACHTUN HARD-GEDODED (50)
         diffs = c(out$budget[2:nrow(out)] - out$budget[seq_len(nrow(out) - 1)])
         hblen = which(diffs == -50)[1]
         nhbruns = length(which(diffs == -50))
