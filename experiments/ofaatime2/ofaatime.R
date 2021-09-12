@@ -33,7 +33,7 @@ eval_ = function(job, data, instance, budget_factor = 30, ...) {
 
 library(batchtools)
 ngrid = 5L
-reg = makeExperimentRegistry(file.dir = "/dss/dssfs02/lwp-dss-0001/pr74ze/pr74ze-dss-0000/ru84tad2/registry_ofaatime_11_09", source = file.path(root, "experiments/ofaatime2/optim2.R"))
+reg = makeExperimentRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_12_09", source = file.path(root, "experiments/ofaatime2/optim2.R"))
 #reg = makeExperimentRegistry(file.dir = NA, source = file.path(root, "experiments/ofaatime2/optim2.R"))
 saveRegistry(reg)
 
@@ -165,11 +165,11 @@ for (cfg in c("lcbench", "rbv2_super")) {
 
 # standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 24L * 4L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
+  walltime = 3600L * 24L * 2L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 100L
 )
 
 all_jobs = findJobs()
-all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 100L)] # ceiling(NROW(all_jobs) / 100L)
+all_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)] # ceiling(NROW(all_jobs) / 100L)
 submitJobs(all_jobs, resources = resources.serial.default)
 
 
