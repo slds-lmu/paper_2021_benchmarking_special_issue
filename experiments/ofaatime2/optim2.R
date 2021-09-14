@@ -402,6 +402,7 @@ prepare_surrogate <- function(surrogate, budgetfactor) {
 
   proto_dt <- generate_design_random(search_space, 1)$data  # a bit hacky; make sure missings have the right type TODO: maybe not necessary any more
 
+  # FIXME: this should not be checked by codomain id...
   if (surrogate$codomain$ids() == "val_cross_entropy") {
     # lcbench special code: fix missings and round budget
 
@@ -420,7 +421,7 @@ prepare_surrogate <- function(surrogate, budgetfactor) {
       rbind(proto_dt, x, fill = TRUE)[2]
     }, prevtrafo, budget_id, proto_dt, budgetupper, budgetlower)
 
-  } else {
+  } else if (surrogate$codomain$ids() == "logloss") {
     # randombot special code: fix missings only
     search_space$params[["trainsize"]]$lower <- 3^-3
 
@@ -433,6 +434,22 @@ prepare_surrogate <- function(surrogate, budgetfactor) {
       x[[budget_id]] <- exp(x[[budget_id]])
       rbind(proto_dt, x, fill = TRUE)[2]
     }, prevtrafo, budget_id, proto_dt)
+
+  } else {
+    # nb301 special code: fix missings and round budget
+    budgetlower <- search_space$params[[budget_id]]$lower
+    budgetupper <- search_space$params[[budget_id]]$upper
+
+    search_space$.__enclos_env__$private$.params[[budget_id]] <- ParamDbl$new(budget_id,
+      lower = log(search_space$params[[budget_id]]$lower),
+      upper = log(search_space$params[[budget_id]]$upper),
+      tags = "budget"
+    )
+
+    search_space$trafo <- mlr3misc::crate(function(x, param_set) {
+      x[[budget_id]] <- max(min(round(exp(x[[budget_id]])), budgetupper), budgetlower)
+      as.data.table(x)
+    }, budget_id, budgetupper, budgetlower)
   }
   list(surrogate = surrogate, search_space = search_space, budget_limit = budget_limit)
 }
