@@ -160,10 +160,15 @@ for (i in seq_len(nrow(rq.7.tbl.BUDGETFACTOR))) {
 
 tab = getJobTable()
 rq1jobs = findJobs(ids = tab[grepl("rq1_", tab$tags)]$job.id)
+rq1jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq4jobs = findJobs(ids = tab[grepl("rq4_", tab$tags)]$job.id)
+rq4jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq5ajobs = findJobs(ids = tab[grepl("rq5a_", tab$tags)]$job.id)
+rq5ajobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq5bjobs = findJobs(ids = tab[grepl("rq5b_", tab$tags)]$job.id)
+rq5bjobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq6jobs = findJobs(ids = tab[grepl("rq6_", tab$tags)]$job.id)
+rq6jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq7jobs = findJobs(ids = tab[grepl("rq7_", tab$tags)]$job.id)
 
 # standard resources used to submit jobs to cluster
