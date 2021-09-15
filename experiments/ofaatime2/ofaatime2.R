@@ -97,7 +97,6 @@ for (i in seq_len(nrow(rq.4.tbl))) {
   addJobTags(ids, paste0("rq4_", i))
 }
 
-
 # rq5a experiments
 for (i in seq_len(nrow(rq.5a.tbl))) {
   ids = addExperiments(
@@ -158,6 +157,17 @@ for (i in seq_len(nrow(rq.7.tbl.BUDGETFACTOR))) {
   addJobTags(ids, paste0("rq7_", i))
 }
 
+# rq6_fix experiments
+for (i in seq_len(nrow(rq.6.tbl_fix))) {
+  ids = addExperiments(
+    prob.designs = prob_designs,
+    algo.designs = list(eval_ = rq.6.tbl_fix[i, ]),
+    repls = repls
+  )
+  addJobTags(ids, paste0("rq6_fix_", i))
+}
+
+
 tab = getJobTable()
 rq1jobs = findJobs(ids = tab[grepl("rq1_", tab$tags)]$job.id)
 rq1jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
@@ -169,16 +179,19 @@ rq5bjobs = findJobs(ids = tab[grepl("rq5b_", tab$tags)]$job.id)
 rq5bjobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq6jobs = findJobs(ids = tab[grepl("rq6_", tab$tags)]$job.id)
 rq6jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
+rq6fixjobs = findJobs(ids = tab[grepl("rq6_fix_", tab$tags)]$job.id)
+rq6fixjobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
+
 rq7jobs = findJobs(ids = tab[grepl("rq7_", tab$tags)]$job.id)
 
 # standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 12L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 9999L
+  walltime = 3600L * 12L, memory = 1024L * 2L, max.concurrent.jobs = 9999L
 )
 
 # large resources used to submit jobs to cluster
 resources.serial.long = list(
-  walltime = 3600L * 24L, memory = 1024L * 8L, clusters = "serial", max.concurrent.jobs = 9999L
+  walltime = 3600L * 24L, memory = 1024L * 8L, max.concurrent.jobs = 9999L
 )
 
 submitJobs(rq1jobs, resources = resources.serial.default)
@@ -186,7 +199,78 @@ submitJobs(rq4jobs, resources = resources.serial.default)
 submitJobs(rq5ajobs, resources = resources.serial.default)
 submitJobs(rq5bjobs, resources = resources.serial.default)
 submitJobs(rq6jobs, resources = resources.serial.default)
+submitJobs(rq6fixjobs, resources = resources.serial.default)
+
+# FIXME: also submit
 submitJobs(rq7jobs, resources = resources.serial.long)
 
+jobs = rbind(findExpired(), findErrors())
+jobs[, chunk := batchtools::chunk(job.id, chunk.size = 5L)]
+submitJobs(jobs, resources = resources.serial.default)
+
+
+
 ################################################################################# Analysis and Plots ##################################################################################################
+
+library(data.table)
+library(batchtools)
+library(mlr3misc)
+
+source("ablation_prepare.R")
+
+reg = loadRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_15_09")
+tags = batchtools::getUsedJobTags()
+tab = getJobTable()
+
+tbl = rq.1.tbl
+rqx = "rq1"
+file = "/home/lschnei8/ofaatime/results_new/results_rq1.rds"
+
+save_results = function(tbl, rqx) {
+  file = paste0("/home/lschnei8/ofaatime/results_new/results_", rqx, ".rds")
+  results = map_dtr(seq_len(nrow(tbl)), function(i) {
+    tagx = paste0(rqx, "_", i)
+    jobs = data.table(job.id = reg$tags[tag == tagx]$job.id)
+    jobs = findDone(jobs)
+    tmp = reduceResultsDataTable(fun = function(x, job) {
+      budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
+      archive = x$archive
+      if (job$instance$cfg == "lcbench") {
+        archive[, budget := round(exp(get(budget_param)))]
+        stopifnot(all(archive$budget >= 1L & archive$budget <= 52L))
+      } else if (job$instance$cfg == "rbv2_super") {
+        archive[, budget := exp(get(budget_param))]
+        stopifnot(all(archive$budget >= 0 & archive$budget <= 1))
+      } else if (job$instance$cfg == "nb301") {
+        archive[, budget := round(exp(get(budget_param)))]
+        stopifnot(all(archive$budget >= 1L & archive$budget <= 98L))
+      }
+      archive[, cumbudget := cumsum(budget)]
+      archive[, repl := job$repl]
+      archive[, id := job$id]
+      archive[, rq := rqx]
+      archive[, rqn := i]
+    }, ids = jobs)
+    rbindlist(tmp$result, fill = TRUE)
+  }, .fill = TRUE)
+  saveRDS(results, file)
+}
+
+# FIXME: rq.6.tbl_fix
+experiments = list(
+  tbl = list(rq.1.tbl, rq.4.tbl, rq.5a.tbl, rq.5a.tbl.cond, rq.5b.tbl, rq.5b.tbl.cond, rq.6.tbl, rq.6.tbl_fix, rq.7.tbl.BUDGETFACTOR),
+  rqx = list("rq1", "rq4", "rq5a", "rq5a_cond", "rq5b", "rq5b_cond", "rq6", "rq6_fix", "rq7")
+)
+pmap(experiments, .f = save_results)
+saveRDS(experiments, "/home/lschnei8/ofaatime/results_new/experiments.rds")
+
+#rq.1.tbl
+#rq.4.tbl
+#rq.5a.tbl
+#rq.5a.tbl.cond
+#rq.5b.tbl
+#rq.5b.tbl.cond
+#rq.6.tbl
+#rq.6.tbl_fix
+#rq.7.tbl.BUDGETFACTOR
 
