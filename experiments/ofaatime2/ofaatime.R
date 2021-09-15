@@ -46,7 +46,7 @@ reg = makeExperimentRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_14
 saveRegistry(reg)
 
 instances = readRDS(system.file("instances.rds", package = "mfsurrogates"))
-instances = instances[cfg %in% c("lcbench", "rbv2_super")]
+instances = instances[cfg %in% c("lcbench", "rbv2_super") & test]
 instances[cfg == "lcbench", target := "val_cross_entropy"]
 instances[cfg == "lcbench", multiplier := 1]
 instances[cfg == "rbv2_super", target := "logloss"]
@@ -90,7 +90,6 @@ saveRDS(lambdas_cfg, "lambdas_cfg.rds")
 
 repls = 30L
 
-# FIXME: nasbench301?
 for (cfg in c("lcbench", "rbv2_super")) {
   lambda = lambdas_cfg[[cfg]]
   prob_designs_selected = prob_designs[grepl(cfg, names(prob_designs))]
@@ -103,20 +102,20 @@ for (cfg in c("lcbench", "rbv2_super")) {
   )
   addJobTags(ids, c(cfg, "baseline"))
 
-  # baseline experiments mu = 32
-  prob_designs_selected_32 = map(prob_designs_selected, function(prob) {
-    prob$multiplier = 32
+  # baseline experiments mu = 8
+  prob_designs_selected_8 = map(prob_designs_selected, function(prob) {
+    prob$multiplier = 8
     prob
   })
   lambdas = lambda
-  lambdas$mu = 32
+  lambdas$mu = 8
   lambdas = as.data.table(lambdas)
   ids = addExperiments(
-    prob.designs = prob_designs_selected_32,
+    prob.designs = prob_designs_selected_8,
     algo.designs = list(eval_ = lambdas),
     repls = repls
   )
-  addJobTags(ids, c(cfg, "baseline_mu_32"))
+  addJobTags(ids, c(cfg, "baseline_mu_8"))
 
   # which surrogate
   id = "surrogate_learner"
@@ -262,46 +261,182 @@ for (cfg in c("lcbench", "rbv2_super")) {
   )
   addJobTags(ids, c("nb301", cfg, "baseline"))
 
-  # baseline experiments mu = 32
-  prob_designs_selected_32 = map(prob_designs_selected, function(prob) {
-    prob$multiplier = 32
+  # baseline experiments mu = 8
+  prob_designs_selected_8 = map(prob_designs_selected, function(prob) {
+    prob$multiplier = 8
     prob
   })
   lambdas = lambda
-  lambdas$mu = 32
+  lambdas$mu = 8
   lambdas = as.data.table(lambdas)
   ids = addExperiments(
-    prob.designs = prob_designs_selected_32,
+    prob.designs = prob_designs_selected_8,
     algo.designs = list(eval_ = lambdas),
     repls = repls
   )
-  addJobTags(ids, c("nb301", cfg, "baseline_mu_32"))
+  addJobTags(ids, c("nb301", cfg, "baseline_mu_8"))
 }
 
 tab = getJobTable()
 baseline_jobs = tab[grepl("baseline", tab$tags)]$job.id
-baseline_mu_32_jobs = tab[grepl("baseline_mu_32", tab$tags)]$job.id
-baseline_jobs = setdiff(baseline_jobs, baseline_mu_32_jobs)
-ablation_jobs = setdiff(tab$job.id, c(baseline_jobs, baseline_mu_32_jobs))
-ablation_jobs = intersect(ablation_jobs, setdiff(findNotDone()$job.id, findQueued()$job.id))
+baseline_mu_8_jobs = tab[grepl("baseline_mu_8", tab$tags)]$job.id
+baseline_jobs = setdiff(baseline_jobs, baseline_mu_8_jobs)
+ablation_jobs = setdiff(tab$job.id, c(baseline_jobs, baseline_mu_8_jobs))
 
 baseline_jobs = findJobs(ids = baseline_jobs)
 baseline_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 5L)]
-baseline_mu_32_jobs = findJobs(ids = baseline_mu_32_jobs)
+baseline_mu_8_jobs = findJobs(ids = baseline_mu_8_jobs)
 ablation_jobs = findJobs(ids = ablation_jobs)
 ablation_jobs[, chunk := batchtools::chunk(job.id, chunk.size = 5L)]
 
 # standard resources used to submit jobs to cluster
 resources.serial.default = list(
-  walltime = 3600L * 12L, memory = 1024L * 1L, clusters = "serial", max.concurrent.jobs = 9999L
+  walltime = 3600L * 12L, memory = 1024L * 2L, clusters = "serial", max.concurrent.jobs = 9999L
 )
 
 # large resources used to submit jobs to cluster
 resources.serial.long = list(
-  walltime = 3600L * 24L, memory = 1024L * 4L, clusters = "serial", max.concurrent.jobs = 9999L
+  walltime = 3600L * 24L, memory = 1024L * 8L, clusters = "serial", max.concurrent.jobs = 9999L
 )
 
-submitJobs(baseline_mu_32_jobs, resources = resources.serial.long)
+submitJobs(baseline_mu_8_jobs, resources = resources.serial.long)
 submitJobs(baseline_jobs, resources = resources.serial.default)
 submitJobs(ablation_jobs, resources = resources.serial.default)
+
+################################################################################# Analysis and Plots ##################################################################################################
+
+library(data.table)
+library(batchtools)
+library(mlr3misc)
+
+reg = loadRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_14_09")
+tags = batchtools::getUsedJobTags()
+tab = getJobTable()
+
+# baseline lcbench
+config = "lcbench"
+jobs = data.table(job.id = intersect(reg$tags[tag == "baseline"]$job.id, setdiff(reg$tags[tag == config]$job.id, reg$tags[tag == "nb301"]$job.id)))
+jobs = findDone(jobs)
+results_baseline = reduceResultsDataTable(fun = function(x, job) {
+  budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
+  archive = x$archive
+  archive[, budget := round(exp(get(budget_param)))]
+  stopifnot(all(archive$budget >= 1L & archive$budget <= 52L))
+  archive[, cumbudget := cumsum(budget)]
+  archive[, repl := job$repl]
+  archive[, id := job$id]
+  archive
+}, ids = jobs)
+results_baseline = rbindlist(results_baseline$result)
+saveRDS(results_baseline, paste0("/home/lschnei8/ofaatime/results/results_baseline_lcbench.rds"))
+
+# baseline rbv2_super
+config = "rbv2_super"
+jobs = data.table(job.id = intersect(reg$tags[tag == "baseline"]$job.id, setdiff(reg$tags[tag == config]$job.id, reg$tags[tag == "nb301"]$job.id)))
+jobs = findDone(jobs)
+results_baseline = reduceResultsDataTable(fun = function(x, job) {
+  budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
+  archive = x$archive
+  archive[, budget := exp(get(budget_param))]
+  stopifnot(all(archive$budget >= 0 & archive$budget <= 1))
+  archive[, cumbudget := cumsum(budget)]
+  archive[, repl := job$repl]
+  archive[, id := job$id]
+  archive
+}, ids = jobs)
+results_baseline = rbindlist(results_baseline$result)
+saveRDS(results_baseline, paste0("/home/lschnei8/ofaatime/results/results_baseline_rbv2_super.rds"))
+
+# baseline nb301 lcbench config
+config = "lcbench"
+jobs = data.table(job.id = intersect(reg$tags[tag == "baseline"]$job.id, intersect(reg$tags[tag == config]$job.id, reg$tags[tag == "nb301"]$job.id)))
+jobs = findDone(jobs)
+results_baseline = reduceResultsDataTable(fun = function(x, job) {
+  budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
+  archive = x$archive
+  archive[, budget := round(exp(get(budget_param)))]
+  stopifnot(all(archive$budget >= 1 & archive$budget <= 98))
+  archive[, cumbudget := cumsum(budget)]
+  archive[, repl := job$repl]
+  archive[, id := job$id]
+  archive
+}, ids = jobs)
+results_baseline = rbindlist(results_baseline$result)
+saveRDS(results_baseline, paste0("/home/lschnei8/ofaatime/results/results_baseline_nb301_lcbench.rds"))
+
+# baseline nb301 rbv2_super config
+config = "rbv2_super"
+jobs = data.table(job.id = intersect(reg$tags[tag == "baseline"]$job.id, intersect(reg$tags[tag == config]$job.id, reg$tags[tag == "nb301"]$job.id)))
+jobs = findDone(jobs)
+results_baseline = reduceResultsDataTable(fun = function(x, job) {
+  budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
+  archive = x$archive
+  archive[, budget := round(exp(get(budget_param)))]
+  stopifnot(all(archive$budget >= 1 & archive$budget <= 98))
+  archive[, cumbudget := cumsum(budget)]
+  archive[, repl := job$repl]
+  archive[, id := job$id]
+  archive
+}, ids = jobs)
+results_baseline = rbindlist(results_baseline$result)
+saveRDS(results_baseline, paste0("/home/lschnei8/ofaatime/results/results_baseline_nb301_rbv2_super.rds"))
+
+# ofaatime
+ofaatime_tags = tags[- which(tags %in% c("baseline", "baseline_mu_32", "lcbench", "rbv2_super", "nb301"))]
+for (config in c("lcbench", "rbv2_super")) {
+  for (ofaatime_tag in ofaatime_tags) {
+    jobs = data.table(job.id = intersect(tab[grepl(config, problem)][["job.id"]], reg$tags[tag %in% ofaatime_tag]$job.id))
+    jobs = findDone(jobs)
+    results = reduceResultsDataTable(fun = function(x, job) {
+      ot = if (ofaatime_tag %in% c("surrogate_learner", "batch_method", "filter_with_max_budget")) {
+        job$algo.pars[[ofaatime_tag]]
+      } else {
+        ofaatime_tag
+      }
+      budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize")
+      archive = x$archive
+      if (job$instance$cfg == "lcbench") {
+        archive[, budget := round(exp(get(budget_param)))]
+        stopifnot(all(archive$budget >= 1L & archive$budget <= 52L))
+      } else if (job$instance$cfg == "rbv2_super") {
+        archive[, budget := exp(get(budget_param))]
+        stopifnot(all(archive$budget >= 0 & archive$budget <= 1))
+      }
+      archive[, cumbudget := cumsum(budget)]
+      archive[, repl := job$repl]
+      archive[, id := job$id]
+      archive[, (ofaatime_tag) := ot]
+      archive
+    }, ids = jobs)
+    results = rbindlist(results$result)
+    saveRDS(results, paste0("/home/lschnei8/ofaatime/results/results_", ofaatime_tag, "_", config, ".rds"))
+  }
+}
+
+for (config in c("lcbench", "rbv2_super")) {
+  files = dir("results")[grepl(config, dir("results"))]
+  stopifnot(length(files) == 11L)
+  
+  data = map(files, function(file) {
+    tmp = readRDS(paste0("results/", file))
+  })
+  tmp = rbindlist(data, fill = TRUE)
+  refs = setNames(tmp[, min(best), by = .(task, repl)], c("task", "repl", "min"))
+  refs$range = tmp[, diff(range(best)), by = .(task, repl)]$V1
+  
+  data = map(data, function(x) {
+    ot = colnames(x)[which(colnames(x) %in% ofaatime_tags)]
+    by_vals =  c("eval_nr", "cumbudget")
+    if (length(ot)) by_vals = c(by_vals, ot)
+    tmp = x[refs, on = c("task", "repl")]
+    tmp[, normalized_regret := (best - min) / range]
+    agg = setNames(tmp[, mean(normalized_regret), by = by_vals], c(by_vals, "mean_normalized_regret"))
+    agg$sd_normalized_regret = tmp[, sd(normalized_regret), by = by_vals]$V1
+    agg$n = tmp[, length(normalized_regret), by = by_vals]$V1
+    agg$se_normalized_regret = agg$sd_normalized_regret / sqrt(agg$n)
+    agg
+  })
+  names(data) = gsub("results_|_lcbench|_rbv2_super|.rds", "", files)
+  saveRDS(data, paste0("/home/lschnei8/ofaatime/results_agg/results_agg_", config, ".rds"))
+}
 
