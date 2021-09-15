@@ -22,7 +22,7 @@ rq.5a.tbl[, batch_method := canonical[!siman & infillsearch == "all", ]$batchmet
 rq.5a.tbl.cond <- rbindlist(lambdas.1)[,
   c("filter_factor_last", "filter_factor_last.end") := sqrt(filter_factor_last.end * filter_factor_last)][,
   c("filter_factor_first", "filter_factor_first.end") := sqrt(filter_factor_first.end * filter_factor_first)][,
-  c("filter_select_per_tournament", "filter_select_per_tournament.end") := round((filter_select_per_tournament.end + filter_select_per_tournament) / 2)][,
+  c("filter_select_per_tournament", "filter_select_per_tournament.end") := round(sqrt(filter_select_per_tournament.end * filter_select_per_tournament))][,
   c("random_interleave_fraction", "random_interleave_fraction.end") := (random_interleave_fraction + random_interleave_fraction.end) / 2][]
 rq.5a.tbl.cond[, batch_method := canonical[siman & infillsearch == "all", ]$batchmethod]
 
@@ -62,6 +62,25 @@ rq.6.tbl <- rbind(surgrid, rigrid, use.names = TRUE)
 rq.7.tbl.BUDGETFACTOR <- rbindlist(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$lambda)[, mu := 32]
 rq.7.tbl.BUDGETFACTOR[, batch_method := canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod]
 
+# RQ 6 fix
+t1 <- rbindlist(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$lambda)[,
+  original_surrogate_learner := surrogate_learner][,
+  surrogate_learner := NULL][, id := 1:2]
+t1[, batch_method := canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod]
+t2 <- CJ(id = 1:2, surrogate_learner = c("knn1", "knn7", "bohblrn", "ranger"))
+
+surgrid <- t1[t2, on = "id"][, id := NULL][surrogate_learner != original_surrogate_learner][, original_surrogate_learner := NULL][]
+rigrid <- rbind(
+  rbindlist(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$lambda)[,
+    c("random_interleave_fraction", "random_interleave_fraction.end") := 1][,
+      sample := "random"],
+  rbindlist(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$lambda)[,
+    c("random_interleave_fraction", "random_interleave_fraction.end") := 0]
+)
+rigrid[, batch_method := c(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod, canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod)]
+
+rq.6.tbl_fix <- rbind(surgrid, rigrid, use.names = TRUE)
+
 
 
 #rq.1.tbl
@@ -72,4 +91,7 @@ rq.7.tbl.BUDGETFACTOR[, batch_method := canonical[siman & infillsearch == "all" 
 #rq.5b.tbl.cond
 #rq.6.tbl
 #rq.7.tbl.BUDGETFACTOR
+#rq.6.tbl_fix
+
+# FIXME: rq.6.tbl_fix to rq.6.tbl
 
