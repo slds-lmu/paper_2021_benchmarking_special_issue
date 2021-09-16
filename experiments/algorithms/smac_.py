@@ -183,7 +183,7 @@ def main(args):
 
     history = smac.get_runhistory()
     budget = [el[args.budget_param] for el in history.get_all_configs()]
-    values = [history.get_cost(conf) for conf in history.get_all_configs()]
+    values = [history.get_cost(conf) * args.objective_multiplier for conf in history.get_all_configs()]
 
     # Iterate in case we are not 
     if args.full_budget:
@@ -210,8 +210,9 @@ def main(args):
             total_budget_spent = sum(budget)
             i = i + 1
 
+    smac.runhistory.save_json(out_dir + '/runhistory.json')        
 
-    values = values * args.objective_multiplier
+    # values = values * args.objective_multiplier
     df = pd.DataFrame({"budget": budget, "performance": values})
 
     with open(os.path.join(args.tempdir, 'results.pkl'), 'wb') as fh:
