@@ -166,7 +166,7 @@ getResultsTable = function(tab, algo, prob, filedir, budget_max, objective_multi
   tored = tab[problem == prob & algorithm == algo, ]
   tored = ijoin(tored, findDone())
 
-  tored = tored[, .SD[1:30], by = c("task")]
+  tored = tored[, .SD, by = c("task")]
 
   jids = tored$job.id
 
