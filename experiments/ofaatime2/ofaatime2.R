@@ -200,8 +200,6 @@ submitJobs(rq5ajobs, resources = resources.serial.default)
 submitJobs(rq5bjobs, resources = resources.serial.default)
 submitJobs(rq6jobs, resources = resources.serial.default)
 submitJobs(rq6fixjobs, resources = resources.serial.default)
-
-# FIXME: also submit
 submitJobs(rq7jobs, resources = resources.serial.long)
 
 jobs = rbind(findExpired(), findErrors())
@@ -222,16 +220,14 @@ reg = loadRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_15_09")
 tags = batchtools::getUsedJobTags()
 tab = getJobTable()
 
-tbl = rq.1.tbl
-rqx = "rq1"
-file = "/home/lschnei8/ofaatime/results_new/results_rq1.rds"
-
+# FIXME: drop some unnecessary stuff (columns) to save space
 save_results = function(tbl, rqx) {
   file = paste0("/home/lschnei8/ofaatime/results_new/results_", rqx, ".rds")
   results = map_dtr(seq_len(nrow(tbl)), function(i) {
     tagx = paste0(rqx, "_", i)
     jobs = data.table(job.id = reg$tags[tag == tagx]$job.id)
     jobs = findDone(jobs)
+    cat(dim(jobs)[1L], rqx, i, "\n")
     tmp = reduceResultsDataTable(fun = function(x, job) {
       budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
       archive = x$archive
@@ -261,6 +257,7 @@ experiments = list(
   tbl = list(rq.1.tbl, rq.4.tbl, rq.5a.tbl, rq.5a.tbl.cond, rq.5b.tbl, rq.5b.tbl.cond, rq.6.tbl, rq.6.tbl_fix, rq.7.tbl.BUDGETFACTOR),
   rqx = list("rq1", "rq4", "rq5a", "rq5a_cond", "rq5b", "rq5b_cond", "rq6", "rq6_fix", "rq7")
 )
+
 pmap(experiments, .f = save_results)
 saveRDS(experiments, "/home/lschnei8/ofaatime/results_new/experiments.rds")
 
