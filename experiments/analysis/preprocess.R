@@ -40,6 +40,10 @@ dfall <- rbind(fulldata, df, fill = TRUE)
 
 saveRDS(yrangetbl, sprintf("results_yrangetbl_%s_%s.rds", problem, if (TESTRUN) "TEST" else "REAL"))
 for (res in RESOLUTIONS) {
+  if (is.infinite(res)) {
+    saveRDS(dfall, sprintf("results_preprocessed_%s_%s_%s.rds", problem, if (TESTRUN) "TEST" else "REAL", res))
+    next
+  }
   grid <- if (res) {
     makeGrid(dfall, res)
   } else {
