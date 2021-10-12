@@ -12,11 +12,19 @@ theme_set(theme_Publication())
 scale_colour_discrete = scale_colour_Publication()
 scale_fill_discrete = scale_fill_Publication()
 
-lcbench_agg = readRDS("lcbench_agg_results.rds")
+lcbench_agg = readRDS("lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
+lcbench_agg = lcbench_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
 lcbench_agg = lcbench_agg[cumbudget <= 1 * 52 * 30 * 7]
 lcbench_agg[, cumbudget := cumbudget / 52]
 lcbench_agg[, mean_best := mean_mean_best]
 lcbench_agg[, se_best := se_mean_best]
+
+
+lcbench_aggp = readRDS("lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
+lcbench_aggp = lcbench_aggp[algorithm %in% c("BOHB_parallel", "HB_parallel", "RS_parallel", "BO_parallel", "rq7_1_parallel", "rq7_2_parallel")]
+lcbench_aggp[, cumbudget := cumbudget / 52]
+lcbench_aggp[, mean_best := mean_mean_best]
+lcbench_aggp[, se_best := se_mean_best]
 
 
 rbv2_super_agg = readRDS("rbv2_super_agg_results.rds")
@@ -32,6 +40,7 @@ nb301_agg[, cumbudget := cumbudget / 98]
 asexp = function(label) {
   sapply(label, function(l) {
     switch(l,
+           "BO" = "GPBO",
            "BOHB" = "BOHB",
            "HB" = "HB",
            "RS" = "RS",
@@ -50,24 +59,75 @@ plot_rq1 = function(dat, logscale = TRUE, benchmark) {
   dat = merge(dat, inter, by = "algorithm")
   inc = dat[cumbudget == mcb, .(mean_best, se_best), by = .(algorithm)]
   dat = rbind(dat, inc, fill = TRUE)
-  rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
-  rq1$algorithm = factor(rq1$algorithm, labels = c("BOHB", "HB", "RS", "sm1", "sm2", "sm3", "sm4", "SMAC"))
+  if (benchmark == "lcbench") {
+    rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
+    #rq1$algorithm = factor(rq1$algorithm,
+    #                       levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
+    #                       labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
+    rq1$algorithm = factor(rq1$algorithm,
+                           levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO"),
+                           labels = c("BOHB", "HB", "RS", "SMAC", "BO"))
+  } else {
+    #rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
+    #rq1$algorithm = factor(rq1$algorithm,
+    #                       levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
+    #                       labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
+    rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
+    rq1$algorithm = factor(rq1$algorithm,
+                           levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO"),
+                           labels = c("BOHB", "HB", "RS", "SMAC", "BO"))
+  }
   p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm), data = rq1) +
     geom_line() +
     geom_ribbon(aes(ymin = mean_best - se_best, ymax = mean_best + se_best), colour = NA, alpha = 0.1) +
     xlab("Budget in Multiples of Max Budget") +
     ylab("Mean Normalized Regret") +
-    labs(title = paste0(benchmark, " Test Instances"), colour = "Algorithm", fill = "Algorithm")
+    labs(title = benchmark, colour = "Algorithm", fill = "Algorithm")
   if (logscale) {
     p = p + scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x), labels = trans_format("log10", math_format(10^.x)))
   }
-  p = p + scale_colour_Publication(labels = asexp) + scale_fill_Publication(labels = asexp) + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+  p = p + scale_colour_Publication(labels = asexp, drop = FALSE) + scale_fill_Publication(labels = asexp, drop = FALSE)
+  if (benchmark == "lcbench") {
+    #p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0, 1.2), xlim = c(1, max(rq1$cumbudget)))
+  } else if (benchmark == "rbv2_super") {
+    #p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0, 1.2), xlim = c(1, max(rq1$cumbudget)))
+  } else if (benchmark == "nb301") {
+    p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+  }
   p
 }
 
-g_rq1 = list(plot_rq1(lcbench_agg, benchmark = "lcbench"), plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(nb301_agg, benchmark = "nb301"))
-g = ggarrange(plotlist = g_rq1, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("rq1.png", plot = g, device = "png", width = 15, height = 6)
+rq1_parallel = {
+  dat = lcbench_aggp
+  rq1 = dat
+  mb = min(rq1[, .(mcb = max(cumbudget)), by = .(algorithm)]$mcb)
+  rq1 = rq1[cumbudget <= mb]
+  rq1$algorithm = factor(rq1$algorithm,
+                           levels = c("BOHB_parallel", "HB_parallel", "RS_parallel", "SMAC_parallel", "rq1_1", "rq7_1_parallel", "rq1_3", "rq7_2_parallel", "BO_parallel"),
+                           labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
+  p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm), data = rq1) +
+    geom_line() +
+    geom_ribbon(aes(ymin = mean_best - se_best, ymax = mean_best + se_best), colour = NA, alpha = 0.1) +
+    xlab("Budget in Multiples of Max Budget x 32") +
+    ylab("Mean Normalized Regret") +
+    labs(title = "lcbench Test Instances Parallel Runs", colour = "Algorithm", fill = "Algorithm")
+  p = p + scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x), labels = trans_format("log10", math_format(10^.x)))
+  p = p + scale_colour_Publication(labels = asexp, drop = FALSE) + scale_fill_Publication(labels = asexp, drop = FALSE) + coord_cartesian(ylim = c(0, 0.6), xlim = c(1, max(rq1$cumbudget)))
+  p
+}
+
+#lcbench_agg = lcbench_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO")]
+#rbv2_super_agg = rbv2_super_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget")]
+#nb301_agg = nb301_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget")]
+
+#g_rq1 = list(plot_rq1(lcbench_agg, benchmark = "lcbench"), plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(nb301_agg, benchmark = "nb301"), rq1_parallel)
+g_rq1 = list( plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(lcbench_agg, benchmark = "lcbench"))
+g = ggarrange(plotlist = g_rq1, nrow = 1, ncol = 2, legend = "bottom", common.legend = TRUE)
+#ggsave("rq1.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("/home/lps/rts/results.pdf", plot = g, device = "pdf", width = 10, height = 4)
+
 
 
 

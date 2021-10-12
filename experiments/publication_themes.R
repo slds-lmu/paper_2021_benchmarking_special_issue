@@ -1,4 +1,4 @@
-theme_Publication <- function(base_size=14, base_family="helvetica") {
+theme_Publication <- function(base_size=14, base_family="") {
       library(grid)
       library(ggthemes)
       (theme_foundation(base_size=base_size, base_family=base_family)
@@ -32,12 +32,12 @@ theme_Publication <- function(base_size=14, base_family="helvetica") {
 
 scale_fill_Publication <- function(...){
       library(scales)
-      discrete_scale("fill","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffff33")), ...)
+      discrete_scale("fill","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffeb0c")), ...)
 
 }
 
 scale_colour_Publication <- function(...){
       library(scales)
-      discrete_scale("colour","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffff33")), ...)
+      discrete_scale("colour","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffeb0c")), ...)
 
 }

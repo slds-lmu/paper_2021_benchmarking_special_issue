@@ -1,3 +1,7 @@
+# TODO:
+# standard error based on random intercept models
+# lmer, lmer4 plot standard error
+
 library(data.table)
 library(mlr3misc)
 
@@ -7,20 +11,28 @@ names(lcbench) = c("id", "repl", "cfg", "task", "algorithm", "eval_nr", "budget"
 lcbench_smashy = readRDS("smashy_lcbench_results.rds")
 lcbench_smashy[, id := as.character(id)]
 lcbench_smashy[, algorithm := paste0(rq, "_", rqn)]
+lcbenchx = readRDS("/project/mallet/mbinder1/toplot.rds")
+lcbenchx[, job.id := paste0("b", job.id)]
+lcbenchx[!is.na(rq) & !is.na(rqn), algorithm := paste0(rq, "_", rqn)]
+lcbenchx[parallel == TRUE, algorithm := paste0(algorithm, "_", "parallel")]
+lcbenchx[, cfg := "lcbench"]
+lcbenchx = lcbenchx[, c("job.id", "task", "algorithm", "perf_cum", "budget_cum", "parallel", "cfg")]
+names(lcbenchx) = c("id", "task", "algorithm", "performance", "cumbudget", "parallel", "cfg")
 
-lcbench = rbind(lcbench, lcbench_smashy[, c("id", "repl", "cfg", "task", "algorithm", "eval_nr", "budget", "performance")])
+lcbench = rbind(lcbench, lcbench_smashy[, c("id", "repl", "cfg", "task", "algorithm", "eval_nr", "budget", "performance")], lcbenchx, fill = TRUE)
 rm(lcbench_smashy)
 gc()
 
-lcbench[, ymin := min(performance), by = .(task)]
+ymin = lcbench[is.na(parallel), .(ymin = min(performance)), by = .(task)]
 ymax = lcbench[algorithm == "randomsearch_full_budget", .(ymax = median(performance)), by = .(task)]
 lcbench = merge(lcbench, ymax, by = "task")
+lcbench = merge(lcbench, ymin, by = "task")
 
 lcbench[, nr := (performance - ymin) / (ymax - ymin)]
 lcbench[, best := cummin(nr), by = .(id)]
-lcbench[, cumbudget := cumsum(budget), by = .(id)]
+lcbench[is.na(parallel), cumbudget := cumsum(budget), by = .(id)]
 
-#drop = lcbench[, .(not_full = max(cumbudget) < 1 * 52 * 30 * 7), by = .(id)]
+#drop = lcbench[is.na(parallel), .(not_full = max(cumbudget) < 1 * 52 * 30 * 7), by = .(id)]
 #drop = drop[not_full == TRUE]$id
 #lcbench = lcbench[id %nin% drop]
 
@@ -31,10 +43,10 @@ map(c(1 * 52, 10 * 52, 100 * 52, 30 * 7 * 52), function(dcb) {
   saveRDS(lcbench_, paste0("lcbench_", dcb, ".rds"))
 })
 
-lcbench_agg_repl = lcbench[, .(mean_best = mean(best), sd_best = sd(best), nr = .N), by = .(algorithm, eval_nr, cumbudget, task)]
-lcbench_agg_repl_task = lcbench_agg_repl[, .(mean_mean_best = mean(mean_best), sd_mean_best = sd(mean_best), nt = .N), by = .(algorithm, eval_nr, cumbudget)]
+lcbench_agg_repl = lcbench[, .(mean_best = mean(best), sd_best = sd(best), nr = .N), by = .(algorithm, cumbudget, task)]  # FIXME: used to include eval_nr
+lcbench_agg_repl_task = lcbench_agg_repl[, .(mean_mean_best = mean(mean_best), sd_mean_best = sd(mean_best), nt = .N), by = .(algorithm, cumbudget)]  # FIXME: used to include eval_nr
 lcbench_agg_repl_task[, se_mean_best := sd_mean_best / sqrt(nt)]
-saveRDS(lcbench_agg_repl_task, "lcbench_agg_results.rds")
+saveRDS(lcbench_agg_repl_task, "lcbench_agg_results_new.rds")
 
 
 
