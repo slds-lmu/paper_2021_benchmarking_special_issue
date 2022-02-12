@@ -95,4 +95,3 @@ rq.6.tbl_fix <- rbind(surgrid, rigrid, use.names = TRUE)
 #rq.6.tbl_fix
 
 # FIXME: rq.6.tbl_fix to rq.6.tbl
-

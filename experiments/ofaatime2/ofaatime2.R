@@ -1,3 +1,5 @@
+################################################################################# Batchtools Code for Ofaatime ##################################################################################################
+
 library(data.table)
 setDTthreads(1L)
 library(mfsurrogates)
@@ -8,7 +10,7 @@ RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
 root = here::here()
-workdir = file.path(root, "irace/data/surrogates")
+workdir = file.path(root, "experiments/ofaatime2/data/surrogates")
 source(file.path(root, "experiments/ofaatime2/optim2.R"))
 
 eval_ = function(job, data, instance, budget_factor = 30L, ...) {
@@ -19,7 +21,7 @@ eval_ = function(job, data, instance, budget_factor = 30L, ...) {
   logger = lgr::get_logger("bbotk")
   logger$set_threshold("warn")
   root = here::here()
-  workdir = file.path(root, "irace/data/surrogates")
+  workdir = file.path(root, "experiments/ofaatime2/data/surrogates")
 
   xs = list(...)
 
@@ -181,7 +183,6 @@ rq6jobs = findJobs(ids = tab[grepl("rq6_", tab$tags)]$job.id)
 rq6jobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
 rq6fixjobs = findJobs(ids = tab[grepl("rq6_fix_", tab$tags)]$job.id)
 rq6fixjobs[, chunk := batchtools::chunk(job.id, chunk.size = 10L)]
-
 rq7jobs = findJobs(ids = tab[grepl("rq7_", tab$tags)]$job.id)
 
 # standard resources used to submit jobs to cluster
@@ -208,7 +209,7 @@ submitJobs(jobs, resources = resources.serial.default)
 
 
 
-################################################################################# Analysis and Plots ##################################################################################################
+################################################################################# Collect Results ##################################################################################################
 
 library(data.table)
 library(batchtools)
@@ -220,15 +221,14 @@ reg = loadRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_15_09")
 tags = batchtools::getUsedJobTags()
 tab = getJobTable()
 
-# FIXME: drop some unnecessary stuff (columns) to save space
 save_results = function(tbl, rqx) {
   file = paste0("/home/lschnei8/ofaatime/results_new/results_", rqx, ".rds")
   results = map_dtr(seq_len(nrow(tbl)), function(i) {
     tagx = paste0(rqx, "_", i)
     jobs = data.table(job.id = reg$tags[tag == tagx]$job.id)
-    jobs = findDone(jobs)
+    gc()
     cat(dim(jobs)[1L], rqx, i, "\n")
-    tmp = reduceResultsDataTable(fun = function(x, job) {
+    tmp = reduceResultsDataTable(fun = function(x, job) {q
       budget_param = switch(job$instance$cfg, lcbench = "epoch", rbv2_super = "trainsize", nb301 = "epoch")
       archive = x$archive
       if (job$instance$cfg == "lcbench") {
