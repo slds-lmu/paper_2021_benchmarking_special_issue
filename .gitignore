@@ -15,10 +15,12 @@ results*
 investigations/*
 
 .Rhistory
+*.xz
 
 
 
 *code-workspace
 
 *__pycache__*
+
 

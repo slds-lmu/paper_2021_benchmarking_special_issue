@@ -5,11 +5,15 @@ collected = readRDS("collected_2021-09-15_2.rds")
 canonical <- collected[mu == "muvary" & curseed == -1]
 lambdas.1 <- canonical[siman & infillsearch == "all", ]$lambda
 
-rq.1.tbl <- rbindlist(lambdas.1)
-rq.1.tbl[, batch_method := canonical[siman & infillsearch == "all", ]$batchmethod]
+rq.1.tbl <- cbind(canonical[siman & infillsearch == "all", c("objective", "batchmethod")], rbindlist(lambdas.1))
+rq.1.tbl[, rq := "rq1"]
+rq.1.tbl[, rqn := seq_len(.N)]
+rq.1.tbl[, algorithm := paste0(rq, "_", rqn)]
+
+
 
 # RQ 4
-rq.4.tbl <- rbindlist(lambdas.1)[, budget_log_step := 100][]
+rq.4.tbl <-  cbind(canonical[siman & infillsearch == "all", c("objective", "batchmethod")], rbindlist(lambdas.1)[, budget_log_step := 100])
 rq.4.tbl[, batch_method := canonical[siman & infillsearch == "all", ]$batchmethod]
 
 # RQ 5
@@ -56,6 +60,11 @@ rigrid <- rbind(
 rigrid[, batch_method := c(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod, canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod)]
 
 rq.6.tbl <- rbind(surgrid, rigrid, use.names = TRUE)
+rq.6.tbl[, rq := "rq6"]
+rq.6.tbl[, rqn := seq_len(.N)]
+rq.6.tbl[, algorithm := paste0(rq, "_", rqn)]
+
+
 
 # RQ 7
 # special:
@@ -81,6 +90,9 @@ rigrid <- rbind(
 rigrid[, batch_method := c(canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod, canonical[siman & infillsearch == "all" & batchmethod == "smashy"]$batchmethod)]
 
 rq.6.tbl_fix <- rbind(surgrid, rigrid, use.names = TRUE)
+rq.6.tbl_fix[, rq := "rq6_fix"]
+rq.6.tbl_fix[, rqn := seq_len(.N)]
+rq.6.tbl_fix[, algorithm := paste0(rq, "_", rqn)]
 
 
 
