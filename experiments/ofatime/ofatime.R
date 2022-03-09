@@ -1,4 +1,4 @@
-################################################################################# Batchtools Code for Ofaatime ##################################################################################################
+# Batchtools Code for Ofatime
 
 library(data.table)
 setDTthreads(1L)
@@ -10,8 +10,8 @@ RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
 root = here::here()
-workdir = file.path(root, "experiments/ofaatime2/data/surrogates")
-source(file.path(root, "experiments/ofaatime2/optim2.R"))
+workdir = file.path(root, "experiments/ofatime/data/surrogates")
+source(file.path(root, "experiments/ofatime/optim.R"))
 
 eval_ = function(job, data, instance, budget_factor = 30L, ...) {
   data.table::setDTthreads(1L)
@@ -21,7 +21,7 @@ eval_ = function(job, data, instance, budget_factor = 30L, ...) {
   logger = lgr::get_logger("bbotk")
   logger$set_threshold("warn")
   root = here::here()
-  workdir = file.path(root, "experiments/ofaatime2/data/surrogates")
+  workdir = file.path(root, "experiments/ofatime/data/surrogates")
 
   xs = list(...)
 
@@ -43,8 +43,8 @@ eval_ = function(job, data, instance, budget_factor = 30L, ...) {
 }
 
 library(batchtools)
-reg = makeExperimentRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_15_09", source = file.path(root, "experiments/ofaatime2/optim2.R"))
-#reg = makeExperimentRegistry(file.dir = NA, source = file.path(root, "experiments/ofaatime2/optim2.R"))
+#reg = makeExperimentRegistry(file.dir = "FIXME", source = file.path(root, "experiments/ofatime/optim.R"))
+reg = makeExperimentRegistry(file.dir = NA, source = file.path(root, "experiments/ofatime/optim.R"))  # interactive session
 saveRegistry(reg)
 
 instances = readRDS(system.file("instances.rds", package = "mfsurrogates"))
@@ -209,7 +209,7 @@ submitJobs(jobs, resources = resources.serial.default)
 
 
 
-################################################################################# Collect Results ##################################################################################################
+# Collect Results
 
 library(data.table)
 library(batchtools)
@@ -217,12 +217,12 @@ library(mlr3misc)
 
 source("ablation_prepare.R")
 
-reg = loadRegistry(file.dir = "/gscratch/lschnei8/registry_ofaatime_15_09")
+reg = loadRegistry(file.dir = "FIXME")
 tags = batchtools::getUsedJobTags()
 tab = getJobTable()
 
 save_results = function(tbl, rqx) {
-  file = paste0("/home/lschnei8/ofaatime/results_new/results_", rqx, ".rds")
+  file = paste0("../results/results_", rqx, ".rds")
   results = map_dtr(seq_len(nrow(tbl)), function(i) {
     tagx = paste0(rqx, "_", i)
     jobs = data.table(job.id = reg$tags[tag == tagx]$job.id)
@@ -259,7 +259,7 @@ experiments = list(
 )
 
 pmap(experiments, .f = save_results)
-saveRDS(experiments, "/home/lschnei8/ofaatime/results_new/experiments.rds")
+saveRDS(experiments, "../results/experiments.rds")
 
 #rq.1.tbl
 #rq.4.tbl
