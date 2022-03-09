@@ -28,5 +28,5 @@ How to replicate our ablation study:
   3. `experiments/analysis/plots.R` is the main file to generate results and figures.
 
 A note on YAHPO GYM:
-  * Benchmark experiments and ablations rely on [YAHPO GYM](https://github.com/slds-lmu/paper_2021_multi_fidelity_surrogates)'s [pre-alpha version](https://github.com/slds-lmu/paper_2021_multi_fidelity_surrogates).
+  * Benchmark experiments and ablations rely on [YAHPO GYM](https://github.com/slds-lmu/yahpo_gym)'s [pre-alpha version](https://github.com/slds-lmu/paper_2021_multi_fidelity_surrogates).
   * Required data (e.g., ONNX files) is provided in the `experiments/ofatime/data/surrogates/` directory.
