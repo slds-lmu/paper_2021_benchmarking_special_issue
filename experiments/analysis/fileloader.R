@@ -1,6 +1,6 @@
 
 
-data.table::setDTthreads(parallel::detectCores())
+data.table::setDTthreads(4)
 options(warn=1)
 
 library("data.table")

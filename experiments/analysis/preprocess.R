@@ -5,7 +5,7 @@ problem <- Sys.getenv("PROBLEM")
 
 TESTRUN <- Sys.getenv("NOTEST") == ""
 
-RESOLUTIONS <- assertNumeric(as.numeric(strsplit(Sys.getenv("RESOLUTION"), " ")[[1]]), any.missing = FALSE)
+RESOLUTIONS <- assertNumeric(as.numeric(strsplit(Sys.getenv("RESOLUTION"), " ")[[1]]), any.missing = FALSE, min.len = 1)
 
 assertSubset(problem, c("lcbench", "rbv2_super", "nb301"))
 
