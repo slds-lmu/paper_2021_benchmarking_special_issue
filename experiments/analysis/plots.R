@@ -334,12 +334,13 @@ asexp = function(gamma) {
 p = ggplot(aes(x = x, y = algorithm, colour = objective, shape = surrogate_learner, linetype = batch_method), data = rqx) +
   geom_point(size = 2, position = position_dodgev(height = 1)) +
   geom_errorbar(aes(xmin = x - se, xmax = x + se), width = 0, position = position_dodgev(height = 1)) +
-  facet_grid(~ cfg, scales = "free_x") +
+  facet_grid(~ cfg) +
   xlab("Mean Normalized Regret") +
   ylab("") +
   labs(colour = "Scenario", shape = expression(I[f[surr]]), linteype = "batch_method") +
   scale_y_discrete(labels = asexp) +
-  scale_colour_Publication() + scale_fill_Publication()
+  scale_colour_Publication() + scale_fill_Publication() +
+  theme(legend.spacing.x = unit(0.5, "cm"))
 
 ggsave("../plots/ablation.png", plot = p, device = "png", width = 10, height = 6)
 
