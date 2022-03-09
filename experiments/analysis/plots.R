@@ -115,7 +115,7 @@ rq1_parallel = {
 
 g_rq1 = list(plot_rq1(lcbench_agg, benchmark = "lcbench"), plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(nb301_agg, benchmark = "nb301"), rq1_parallel)
 g = ggarrange(plotlist = g_rq1, nrow = 1, ncol = 4, legend = "top", common.legend = TRUE)
-ggsave("../plots/rq1.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq1.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -141,7 +141,7 @@ plot_rq4 = function(dat, logscale = TRUE, benchmark) {
 
 g_rq4 = list(plot_rq4(lcbench_agg, benchmark = "lcbench"), plot_rq4(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq4(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq4, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("../plots/rq4.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq4.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -167,7 +167,7 @@ plot_rq5a = function(dat, logscale = TRUE, benchmark) {
 
 g_rq5a = list(plot_rq5a(lcbench_agg, benchmark = "lcbench"), plot_rq5a(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq5a(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq5a, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("../plots/rq5a.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq5a.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -193,7 +193,7 @@ plot_rq5b = function(dat, logscale = TRUE, benchmark) {
 
 g_rq5b = list(plot_rq5b(lcbench_agg, benchmark = "lcbench"), plot_rq5b(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq5b(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq5b, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("../plots/rq5b.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq5b.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -219,7 +219,7 @@ plot_rq6 = function(dat,logscale = TRUE, benchmark) {
 
 g_rq6 = list(plot_rq6(lcbench_agg, benchmark = "lcbench"), plot_rq6(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq6(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq6, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("../plots/rq6.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq6.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -246,7 +246,7 @@ plot_rq6_ri = function(dat,logscale = TRUE, benchmark) {
 
 g_rq6_ri = list(plot_rq6_ri(lcbench_agg, benchmark = "lcbench"), plot_rq6_ri(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq6_ri(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq6_ri, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("../plots/rq6_ri.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq6_ri.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 lcbenchx = lcbench_agg[algorithm %in% c(#"hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget",
                                         paste0("rq1_", 1:4), paste0("rq4_", 1:4), paste0("rq5a_", 1:4), paste0("rq5b_", 1:4), paste0("rq6_", 1:8), paste0("rq6_fix_", 7:8))]
@@ -342,5 +342,5 @@ p = ggplot(aes(x = x, y = algorithm, colour = objective, shape = surrogate_learn
   scale_colour_Publication() + scale_fill_Publication() +
   theme(legend.spacing.x = unit(0.5, "cm"))
 
-ggsave("../plots/ablation.png", plot = p, device = "png", width = 10, height = 6)
+ggsave("../plots/ablation.pdf", plot = p, device = "pdf", width = 12, height = 6)
 
