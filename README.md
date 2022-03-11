@@ -5,13 +5,12 @@ The repository ist structured as follows:
   * `experiments/` contains all code used troughout our benchmark experiments and ablation studies
 
 Within `experiments/` you can find:
-  * `algorithms/`: FIXME
+  * `algorithms/`: directory containing all code to call the implementations of hpbandster, random search, mlrMBO, and SMAC
   * `analysis/`: directory containing all code used to analyse our benchmark experiments and ablation studies
   * `ofatime/`: directory containing all code used throughout our ablation study
   * `plots/`: directory containing all plots as presented in the paper
   * `results/`: directory containing all aggregated results; if you would like to obtain the raw unaggregated results,
     please open an issue as we currently do not host them due to large file sizes
-  * `config.R`, `helper.R`, `publication_themes.R`, `reduce.R`, `setup.R`, `submit.R`, `test.R` FIXME
 
 How to replicate our ablation study:
   1. Setup `R (4.0.2)` and install all required packages.
@@ -26,6 +25,13 @@ How to replicate our ablation study:
      After saving the results, you must aggregate them using the code provided in `experiments/analysis/aggregate.R`.
      This step is not necessary if you only want to inspect our results because we provide aggregated versions already in `experiments/results/`.
   3. `experiments/analysis/plots.R` is the main file to generate results and figures.
+
+How to replicate the experiments to compare against other implementations (HB, SMAC, BOHB, RS):
+  1. Setup `R (4.0.2)` and install all required packages.
+  2. Furthermore, make sure that python is installed
+  3. `experiments/algorithms/_run.R` is the main file to run all the comparison experiments.
+  Similar to the ablation analysis, it relies on batchtools to be run on a cluster.
+
 
 A note on YAHPO GYM:
   * Benchmark experiments and ablations rely on [YAHPO GYM](https://github.com/slds-lmu/yahpo_gym)'s [pre-alpha version](https://github.com/slds-lmu/paper_2021_multi_fidelity_surrogates).

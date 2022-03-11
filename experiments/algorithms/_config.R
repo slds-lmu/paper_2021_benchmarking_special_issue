@@ -2,17 +2,13 @@
 
 setwd(here::here())
 
-source("experiments/helper.R")
-
-source("OptimizerFocusSearch.R")
+source("experiments/algorithms/helper.R")
 
 source("experiments/algorithms/randomsearch.R")
-source("experiments/algorithms/focussearch.R")
 source("experiments/algorithms/mlr3hyperband.R")
 source("experiments/algorithms/mlrintermbo.R")
 source("experiments/algorithms/hpbster.R")
 source("experiments/algorithms/smac_.R")
-source("experiments/algorithms/smac_hyperband.R")
 
 # Test setup with reduced budget (see below) or real setup 
 SETUP = "REAL"
@@ -34,7 +30,7 @@ switch(SETUP,
 		# do never overwrite registry
 		OVERWRITE = FALSE
 		# termination criterion for each run
-		registry_name = "reg_sequential"
+		registry_name = "reg"
 		# replications
 		REPLS = 30L * 32L 
 		# Budget multiplier: d * budget_upper * B_MULTIPLIER
@@ -61,28 +57,23 @@ packages = c(
 ) 
 
 # remotes::install_github("mlr-org/ParamHelpers@handle_long_reqs")
-
 lapply(packages, library, character.only = TRUE)
-
 
 
 # --- 1. PROBLEM DESIGN ---
 
 SURROGATE_LOCATION = c("experiments/problems/")
 
-surrogates = c("lcbench", "branin", "rbv2_super", "nb301") 
+surrogates = c("lcbench", "rbv2_super", "nb301") 
 
 # Downloads all surrogate data 
 options(timeout=60^2) # set very high timeout to make sure everything is downloaded
 surr_data = lapply(surrogates, function(surr) {
 	
 	cfg = cfgs(surr, workdir = SURROGATE_LOCATION)
-	if (surr != "branin")
-		cfg$setup(force = FALSE)
-	else 
-		cfg$setup()
+	cfg$setup()
 	# Store codomain manually for the python scripts
-	# saveRDS(cfg$param_set, file.path(SURROGATE_LOCATION, surr, "param_set"))
+	saveRDS(cfg$param_set, file.path(SURROGATE_LOCATION, surr, "param_set"))
 
 	return(cfg)
 })
@@ -91,7 +82,6 @@ names(surr_data) = surrogates
 
 pdes = list(# nb301 = data.table(objectives = c("val_accuracy")), 
 			lcbench = data.table(objectives = c("val_cross_entropy")), 
-			branin = data.table(objectives = c("y")),
 			rbv2_super = data.table(objectives = c("logloss")),
 			nb301 = data.table(objectives = c("val_accuracy")) 
 			)
@@ -127,34 +117,12 @@ names(pdes) = surrogates
 # --- 2. ALGORITHM DESIGN ---
 
 ALGORITHMS = list(
-    # randomsearch = list(fun = randomsearch, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
     randomsearch_full_budget = list(fun = randomsearch, ades = data.table(full_budget = TRUE)), 
-    # focussearch = list(fun = focussearch, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    # focussearch_full_budget = list(fun = focussearch, ades = data.table(full_budget = TRUE)), 
     mlr3hyperband = list(fun = mlr3hyperband, ades = data.table(eta = 3)), # log-scale not relevant
-    # mlrintermbo = list(fun = mlrintermbo, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    # mlrintermbo_full_budget = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE)), 
-    # mlrintermbo_full_budget_32 = list(fun = mlrintermbo, ades = data.table(full_budget = TRUE, log_scale = TRUE, multi.point = 32L)), 
     hpbster_hb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
     hpbster_bohb = list(fun = hpbster, ades = data.table(eta = 3, algorithm_type = "bohb")), # log-scale not relevant
-    # hpbster_bohb_32 = list(...), # TODO: Variant that is comparable to the parallelized scenario
-    # smac = list(fun = smac, ades = data.table(full_budget = FALSE, log_scale = TRUE)), 
-    smac_full_budget = list(fun = smac, ades = data.table(full_budget = TRUE)) 
-    # smac_full_budget_32 = list() # TODO: Variant that does the multi-point proposals, 
-    # smac_hb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "hb")), # log-scale not relevant
-    # smac_bohb = list(fun = smac_hb, ades = data.table(eta = 3, algorithm_type = "bohb")) # log-scale not relevant
+    smac_full_budget = list(fun = smac, ades = data.table(full_budget = TRUE))
 )
 
 des = lapply(ALGORITHMS, function(x) x$ades)
-
-
-# instance = readProblem(surr_data[["nb301"]], 1, NA, objectives = c("val_accuracy"))
-# instance = readProblem(surr_data[["lcbench"]], 1, "3945", objectives = c("val_cross_entropy"))
-# instance = readProblem(surr_data[["rbv2_super"]], 1, "1040", objectives = c("logloss"))
-# instance = readProblem(surr_data[["branin"]], 1, NA, objectives = c("y"))
-
-# NB301 takes approx. 44 minutes 
-
-# TODO: mlrintermbo does not work on nb301
-# TODO: if lower boundary is 0, it must be 0.01 (--> rbv2)
 
