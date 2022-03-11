@@ -1,17 +1,14 @@
-# TODO:
-# standard error based on random intercept models
-# lmer, lmer4 plot standard error
-
 library(data.table)
 library(mlr3misc)
 
+
 ### lcbench
-lcbench = readRDS("lcbench_results.rds")
+lcbench = readRDS("../results/lcbench_results.rds")
 names(lcbench) = c("id", "repl", "cfg", "task", "algorithm", "eval_nr", "budget", "performance")
-lcbench_smashy = readRDS("smashy_lcbench_results.rds")
+lcbench_smashy = readRDS("../results/smashy_lcbench_results.rds")
 lcbench_smashy[, id := as.character(id)]
 lcbench_smashy[, algorithm := paste0(rq, "_", rqn)]
-lcbenchx = readRDS("/project/mallet/mbinder1/toplot.rds")
+lcbenchx = readRDS("../results/toplot.rds")
 lcbenchx[, job.id := paste0("b", job.id)]
 lcbenchx[!is.na(rq) & !is.na(rqn), algorithm := paste0(rq, "_", rqn)]
 lcbenchx[parallel == TRUE, algorithm := paste0(algorithm, "_", "parallel")]
@@ -40,20 +37,20 @@ map(c(1 * 52, 10 * 52, 100 * 52, 30 * 7 * 52), function(dcb) {
   lcbench_ = lcbench[cumbudget <= dcb]
   lcbench_[, mcb := max(cumbudget), by = .(id)]
   lcbench_ = lcbench_[cumbudget == mcb]
-  saveRDS(lcbench_, paste0("lcbench_", dcb, ".rds"))
+  saveRDS(lcbench_, paste0("../results/lcbench_", dcb, ".rds"))
 })
 
 lcbench_agg_repl = lcbench[, .(mean_best = mean(best), sd_best = sd(best), nr = .N), by = .(algorithm, cumbudget, task)]  # FIXME: used to include eval_nr
 lcbench_agg_repl_task = lcbench_agg_repl[, .(mean_mean_best = mean(mean_best), sd_mean_best = sd(mean_best), nt = .N), by = .(algorithm, cumbudget)]  # FIXME: used to include eval_nr
 lcbench_agg_repl_task[, se_mean_best := sd_mean_best / sqrt(nt)]
-saveRDS(lcbench_agg_repl_task, "lcbench_agg_results_new.rds")
+saveRDS(lcbench_agg_repl_task, "../results/lcbench_agg_results_new.rds")
 
 
 
 ### rbv2_super
-rbv2_super = readRDS("rbv2_super_results.rds")
+rbv2_super = readRDS("../results/rbv2_super_results.rds")
 names(rbv2_super) = c("id", "repl", "cfg", "task", "algorithm", "eval_nr", "budget", "performance")
-rbv2_super_smashy = readRDS("smashy_rbv2_super_results.rds")
+rbv2_super_smashy = readRDS("../results/smashy_rbv2_super_results.rds")
 rbv2_super_smashy[, id := as.character(id)]
 rbv2_super_smashy[, algorithm := paste0(rq, "_", rqn)]
 
@@ -77,20 +74,20 @@ map(c(1 * 1, 10 * 1, 100 * 1, 30 * 38 * 1), function(dcb) {
   rbv2_super_ = rbv2_super[cumbudget <= dcb]
   rbv2_super_[, mcb := max(cumbudget), by = .(id)]
   rbv2_super_ = rbv2_super_[cumbudget == mcb]
-  saveRDS(rbv2_super_, paste0("rbv2_super_", dcb, ".rds"))
+  saveRDS(rbv2_super_, paste0("../results/rbv2_super_", dcb, ".rds"))
 })
 
 rbv2_super_agg_repl = rbv2_super[, .(mean_best = mean(best), sd_best = sd(best), nr = .N), by = .(algorithm, eval_nr, cumbudget, task)]
 rbv2_super_agg_repl_task = rbv2_super_agg_repl[, .(mean_mean_best = mean(mean_best), sd_mean_best = sd(mean_best), nt = .N), by = .(algorithm, eval_nr, cumbudget)]
 rbv2_super_agg_repl_task[, se_mean_best := sd_mean_best / sqrt(nt)]
-saveRDS(rbv2_super_agg_repl_task, "rbv2_super_agg_results.rds")
+saveRDS(rbv2_super_agg_repl_task, "../results/rbv2_super_agg_results.rds")
 
 
 
 ### nb301
-nb301 = readRDS("nb301_results.rds")
+nb301 = readRDS("../results/nb301_results.rds")
 names(nb301) = c("id", "repl", "cfg", "task", "algorithm", "eval_nr", "budget", "performance")
-nb301_smashy = readRDS("smashy_nb301_results.rds")
+nb301_smashy = readRDS("../results/smashy_nb301_results.rds")
 nb301_smashy[, id := as.character(id)]
 nb301_smashy[, algorithm := paste0(rq, "_", rqn)]
 
@@ -113,14 +110,14 @@ map(c(1 * 98, 10 * 98, 100 * 98, 30 * 34 * 98), function(dcb) {
   nb301_ = nb301[cumbudget <= dcb]
   nb301_[, mcb := max(cumbudget), by = .(id)]
   nb301_ = nb301_[cumbudget == mcb]
-  saveRDS(nb301_, paste0("nb301_", dcb, ".rds"))
+  saveRDS(nb301_, paste0("../results/nb301_", dcb, ".rds"))
 })
 
 nb301_agg_repl = nb301[, .(mean_best = mean(best), sd_best = sd(best), nr = .N), by = .(algorithm, eval_nr, cumbudget)]
 nb301_agg_repl[, se_best := sd_best / sqrt(nr)]
-saveRDS(nb301_agg_repl, "nb301_agg_results.rds")
+saveRDS(nb301_agg_repl, "../results/nb301_agg_results.rds")
 
 nb301[, mcb := max(cumbudget), by = .(id)]
 nb301 = nb301[cumbudget == mcb]
-saveRDS(nb301, "nb301_final_performance.rds")
+saveRDS(nb301, "../results/nb301_final_performance.rds")
 

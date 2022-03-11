@@ -22,7 +22,7 @@ theme_Publication <- function(base_size=14, base_family="") {
                legend.key.size= unit(0.3, "cm"),
                legend.margin = unit(0, "cm"),
                legend.title = element_text(face = "italic"),
-               legend.text = element_text(size = rel(0.8)),
+               legend.text = element_text(size = rel(0.9)),
                plot.margin=unit(c(10,5,5,5),"mm"),
                strip.background=element_rect(colour="#f0f0f0",fill="#f0f0f0"),
                strip.text = element_text(face="bold")
@@ -32,12 +32,12 @@ theme_Publication <- function(base_size=14, base_family="") {
 
 scale_fill_Publication <- function(...){
       library(scales)
-      discrete_scale("fill","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffeb0c")), ...)
+      discrete_scale("fill","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#754934","#a6cee3","#fb9a99","#984ea3","#ffeb0c")), ...)
 
 }
 
 scale_colour_Publication <- function(...){
       library(scales)
-      discrete_scale("colour","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffeb0c")), ...)
+      discrete_scale("colour","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#754934","#a6cee3","#fb9a99","#984ea3","#ffeb0c")), ...)
 
 }

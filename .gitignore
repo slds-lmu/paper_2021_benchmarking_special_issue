@@ -1,26 +1,16 @@
 reg*
 tmp*
-
 *hdf5
 *rds
 *onnx
 *png
-
 *notes.txt
 experiments/results/
 experiments/problems/
-
 results*
-
 investigations/*
-
 .Rhistory
 *.xz
-
-
-
 *code-workspace
-
 *__pycache__*
-
 

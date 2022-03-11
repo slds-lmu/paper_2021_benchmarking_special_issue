@@ -12,28 +12,28 @@ theme_set(theme_Publication())
 scale_colour_discrete = scale_colour_Publication()
 scale_fill_discrete = scale_fill_Publication()
 
-lcbench_agg = readRDS("lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
-lcbench_agg = lcbench_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
+lcbench_agg = readRDS("../results/lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
+#lcbench_agg = lcbench_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
 lcbench_agg = lcbench_agg[cumbudget <= 1 * 52 * 30 * 7]
 lcbench_agg[, cumbudget := cumbudget / 52]
 lcbench_agg[, mean_best := mean_mean_best]
 lcbench_agg[, se_best := se_mean_best]
 
 
-lcbench_aggp = readRDS("lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
+lcbench_aggp = readRDS("../results/lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
 lcbench_aggp = lcbench_aggp[algorithm %in% c("BOHB_parallel", "HB_parallel", "RS_parallel", "BO_parallel", "rq7_1_parallel", "rq7_2_parallel")]
 lcbench_aggp[, cumbudget := cumbudget / 52]
 lcbench_aggp[, mean_best := mean_mean_best]
 lcbench_aggp[, se_best := se_mean_best]
 
 
-rbv2_super_agg = readRDS("rbv2_super_agg_results.rds")
+rbv2_super_agg = readRDS("../results/rbv2_super_agg_results.rds")
 rbv2_super_agg = rbv2_super_agg[cumbudget <= 1 * 1 * 30 * 37]
 rbv2_super_agg[, mean_best := mean_mean_best]
 rbv2_super_agg[, se_best := se_mean_best]
 
 
-nb301_agg = readRDS("nb301_agg_results.rds")
+nb301_agg = readRDS("../results/nb301_agg_results.rds")
 nb301_agg = nb301_agg[cumbudget <= 1 * 98 * 30 * 30]
 nb301_agg[, cumbudget := cumbudget / 98]
 
@@ -61,38 +61,29 @@ plot_rq1 = function(dat, logscale = TRUE, benchmark) {
   dat = rbind(dat, inc, fill = TRUE)
   if (benchmark == "lcbench") {
     rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
-    #rq1$algorithm = factor(rq1$algorithm,
-    #                       levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
-    #                       labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
     rq1$algorithm = factor(rq1$algorithm,
-                           levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO"),
-                           labels = c("BOHB", "HB", "RS", "SMAC", "BO"))
+                           levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
+                           labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
   } else {
-    #rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
-    #rq1$algorithm = factor(rq1$algorithm,
-    #                       levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
-    #                       labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
     rq1 = dat[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4")]
     rq1$algorithm = factor(rq1$algorithm,
-                           levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "BO"),
-                           labels = c("BOHB", "HB", "RS", "SMAC", "BO"))
+                           levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
+                           labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
   }
   p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm), data = rq1) +
     geom_line() +
     geom_ribbon(aes(ymin = mean_best - se_best, ymax = mean_best + se_best), colour = NA, alpha = 0.1) +
     xlab("Budget in Multiples of Max Budget") +
     ylab("Mean Normalized Regret") +
-    labs(title = benchmark, colour = "Algorithm", fill = "Algorithm")
+    labs(title = paste0(benchmark, " Test Instances"), colour = "Algorithm", fill = "Algorithm")
   if (logscale) {
     p = p + scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x), labels = trans_format("log10", math_format(10^.x)))
   }
   p = p + scale_colour_Publication(labels = asexp, drop = FALSE) + scale_fill_Publication(labels = asexp, drop = FALSE)
   if (benchmark == "lcbench") {
-    #p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
-    p = p + coord_cartesian(ylim = c(0, 1.2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
   } else if (benchmark == "rbv2_super") {
-    #p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
-    p = p + coord_cartesian(ylim = c(0, 1.2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
   } else if (benchmark == "nb301") {
     p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
   }
@@ -122,12 +113,9 @@ rq1_parallel = {
 #rbv2_super_agg = rbv2_super_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget")]
 #nb301_agg = nb301_agg[algorithm %in% c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget")]
 
-#g_rq1 = list(plot_rq1(lcbench_agg, benchmark = "lcbench"), plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(nb301_agg, benchmark = "nb301"), rq1_parallel)
-g_rq1 = list( plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(lcbench_agg, benchmark = "lcbench"))
-g = ggarrange(plotlist = g_rq1, nrow = 1, ncol = 2, legend = "bottom", common.legend = TRUE)
-#ggsave("rq1.png", plot = g, device = "png", width = 20, height = 6)
-ggsave("/home/lps/rts/results.pdf", plot = g, device = "pdf", width = 10, height = 4)
-
+g_rq1 = list(plot_rq1(lcbench_agg, benchmark = "lcbench"), plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(nb301_agg, benchmark = "nb301"), rq1_parallel)
+g = ggarrange(plotlist = g_rq1, nrow = 1, ncol = 4, legend = "top", common.legend = TRUE)
+ggsave("../plots/rq1.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -153,7 +141,7 @@ plot_rq4 = function(dat, logscale = TRUE, benchmark) {
 
 g_rq4 = list(plot_rq4(lcbench_agg, benchmark = "lcbench"), plot_rq4(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq4(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq4, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("rq4.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq4.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -179,7 +167,7 @@ plot_rq5a = function(dat, logscale = TRUE, benchmark) {
 
 g_rq5a = list(plot_rq5a(lcbench_agg, benchmark = "lcbench"), plot_rq5a(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq5a(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq5a, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("rq5a.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq5a.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -205,7 +193,7 @@ plot_rq5b = function(dat, logscale = TRUE, benchmark) {
 
 g_rq5b = list(plot_rq5b(lcbench_agg, benchmark = "lcbench"), plot_rq5b(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq5b(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq5b, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("rq5b.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq5b.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -231,7 +219,7 @@ plot_rq6 = function(dat,logscale = TRUE, benchmark) {
 
 g_rq6 = list(plot_rq6(lcbench_agg, benchmark = "lcbench"), plot_rq6(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq6(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq6, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("rq6.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq6.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
 
@@ -258,7 +246,7 @@ plot_rq6_ri = function(dat,logscale = TRUE, benchmark) {
 
 g_rq6_ri = list(plot_rq6_ri(lcbench_agg, benchmark = "lcbench"), plot_rq6_ri(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq6_ri(nb301_agg, benchmark = "nb301"))
 g = ggarrange(plotlist = g_rq6_ri, nrow = 1, ncol = 3, common.legend = TRUE)
-ggsave("rq6_ri.png", plot = g, device = "png", width = 20, height = 6)
+ggsave("../plots/rq6_ri.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 lcbenchx = lcbench_agg[algorithm %in% c(#"hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget",
                                         paste0("rq1_", 1:4), paste0("rq4_", 1:4), paste0("rq5a_", 1:4), paste0("rq5b_", 1:4), paste0("rq6_", 1:8), paste0("rq6_fix_", 7:8))]
@@ -346,12 +334,13 @@ asexp = function(gamma) {
 p = ggplot(aes(x = x, y = algorithm, colour = objective, shape = surrogate_learner, linetype = batch_method), data = rqx) +
   geom_point(size = 2, position = position_dodgev(height = 1)) +
   geom_errorbar(aes(xmin = x - se, xmax = x + se), width = 0, position = position_dodgev(height = 1)) +
-  facet_grid(~ cfg, scales = "free_x") +
+  facet_grid(~ cfg) +
   xlab("Mean Normalized Regret") +
   ylab("") +
   labs(colour = "Scenario", shape = expression(I[f[surr]]), linteype = "batch_method") +
   scale_y_discrete(labels = asexp) +
-  scale_colour_Publication() + scale_fill_Publication()
+  scale_colour_Publication() + scale_fill_Publication() +
+  theme(legend.spacing.x = unit(0.5, "cm"))
 
-ggsave("ablation.png", plot = p, device = "png", width = 10, height = 6)
+ggsave("../plots/ablation.pdf", plot = p, device = "pdf", width = 12, height = 6)
 
