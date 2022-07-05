@@ -18,24 +18,35 @@ lcbench_agg = lcbench_agg[cumbudget <= 1 * 52 * 30 * 7]
 lcbench_agg[, cumbudget := cumbudget / 52]
 lcbench_agg[, mean_best := mean_mean_best]
 lcbench_agg[, se_best := se_mean_best]
-
+lcbench_agg$method_type = 1
+lcbench_agg[algorithm %in% c("rq1_1", "rq1_2", "rq1_3", "rq1_4"), method_type := 0]
+lcbench_agg$method_type = as.factor(lcbench_agg$method_type)
 
 lcbench_aggp = readRDS("../results/lcbench_agg_results_new.rds")  # new is based on Martin's toplot.rds additional BO & 32 runs
 lcbench_aggp = lcbench_aggp[algorithm %in% c("BOHB_parallel", "HB_parallel", "RS_parallel", "BO_parallel", "rq7_1_parallel", "rq7_2_parallel")]
 lcbench_aggp[, cumbudget := cumbudget / 52]
 lcbench_aggp[, mean_best := mean_mean_best]
 lcbench_aggp[, se_best := se_mean_best]
-
+lcbench_aggp$method_type = 1
+lcbench_aggp[algorithm %in% c("rq7_1_parallel", "rq7_2_parallel"), method_type := 0]
+lcbench_aggp$method_type = as.factor(lcbench_aggp$method_type)
 
 rbv2_super_agg = readRDS("../results/rbv2_super_agg_results.rds")
 rbv2_super_agg = rbv2_super_agg[cumbudget <= 1 * 1 * 30 * 37]
 rbv2_super_agg[, mean_best := mean_mean_best]
 rbv2_super_agg[, se_best := se_mean_best]
+rbv2_super_agg$method_type = 1
+rbv2_super_agg[algorithm %in% c("rq1_1", "rq1_2", "rq1_3", "rq1_4"), method_type := 0]
+rbv2_super_agg$method_type = as.factor(rbv2_super_agg$method_type)
 
 
 nb301_agg = readRDS("../results/nb301_agg_results.rds")
 nb301_agg = nb301_agg[cumbudget <= 1 * 98 * 30 * 30]
 nb301_agg[, cumbudget := cumbudget / 98]
+nb301_agg$method_type = 1
+nb301_agg[algorithm %in% c("rq1_1", "rq1_2", "rq1_3", "rq1_4"), method_type := 0]
+nb301_agg$method_type = as.factor(nb301_agg$method_type)
+
 
 asexp = function(label) {
   sapply(label, function(l) {
@@ -70,7 +81,7 @@ plot_rq1 = function(dat, logscale = TRUE, benchmark) {
                            levels = c("hpbster_bohb", "mlr3hyperband", "randomsearch_full_budget", "smac_full_budget", "rq1_1", "rq1_2", "rq1_3", "rq1_4", "BO"),
                            labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
   }
-  p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm), data = rq1) +
+  p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm, linetype = method_type), data = rq1) +
     geom_line() +
     geom_ribbon(aes(ymin = mean_best - se_best, ymax = mean_best + se_best), colour = NA, alpha = 0.1) +
     xlab("Budget in Multiples of Max Budget") +
@@ -81,12 +92,16 @@ plot_rq1 = function(dat, logscale = TRUE, benchmark) {
   }
   p = p + scale_colour_Publication(labels = asexp, drop = FALSE) + scale_fill_Publication(labels = asexp, drop = FALSE)
   if (benchmark == "lcbench") {
-    p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0, 1), xlim = c(1, max(rq1$cumbudget)))
   } else if (benchmark == "rbv2_super") {
-    p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0.25, 1.5), xlim = c(1, max(rq1$cumbudget)))
   } else if (benchmark == "nb301") {
-    p = p + coord_cartesian(ylim = c(0, 2), xlim = c(1, max(rq1$cumbudget)))
+    p = p + coord_cartesian(ylim = c(0, 1.5), xlim = c(1, max(rq1$cumbudget)))
   }
+  override.linetype = c(2, 2, 2, 2, 1, 1, 1, 1, 2)
+  p = p + guides(colour = guide_legend(override.aes = list(linetype = override.linetype)))
+  p = p + scale_linetype(guide = FALSE)
+  p = p + theme(legend.key.size = unit(2,"line"))
   p
 }
 
@@ -98,7 +113,7 @@ rq1_parallel = {
   rq1$algorithm = factor(rq1$algorithm,
                            levels = c("BOHB_parallel", "HB_parallel", "RS_parallel", "SMAC_parallel", "rq1_1", "rq7_1_parallel", "rq1_3", "rq7_2_parallel", "BO_parallel"),
                            labels = c("BOHB", "HB", "RS", "SMAC", "sm1", "sm2", "sm3", "sm4", "BO"))
-  p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm), data = rq1) +
+  p = ggplot(aes(y = mean_best, x = cumbudget, colour = algorithm, fill = algorithm, linetype = method_type), data = rq1) +
     geom_line() +
     geom_ribbon(aes(ymin = mean_best - se_best, ymax = mean_best + se_best), colour = NA, alpha = 0.1) +
     xlab("Budget in Multiples of Max Budget x 32") +
@@ -106,6 +121,7 @@ rq1_parallel = {
     labs(title = "lcbench Test Instances Parallel Runs", colour = "Algorithm", fill = "Algorithm")
   p = p + scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x), labels = trans_format("log10", math_format(10^.x)))
   p = p + scale_colour_Publication(labels = asexp, drop = FALSE) + scale_fill_Publication(labels = asexp, drop = FALSE) + coord_cartesian(ylim = c(0, 0.6), xlim = c(1, max(rq1$cumbudget)))
+  p = p + theme(legend.key.size = unit(2,"line"))
   p
 }
 
@@ -115,6 +131,8 @@ rq1_parallel = {
 
 g_rq1 = list(plot_rq1(lcbench_agg, benchmark = "lcbench"), plot_rq1(rbv2_super_agg, benchmark = "rbv2_super"), plot_rq1(nb301_agg, benchmark = "nb301"), rq1_parallel)
 g = ggarrange(plotlist = g_rq1, nrow = 1, ncol = 4, legend = "top", common.legend = TRUE)
+g
+
 ggsave("../plots/rq1.pdf", plot = g, device = "pdf", width = 20, height = 6)
 
 
